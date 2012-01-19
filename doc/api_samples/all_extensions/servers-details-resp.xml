@@ -1,5 +1,5 @@
 <?xml version='1.0' encoding='UTF-8'?>
-<servers xmlns:OS-DCF="http://docs.openstack.org/compute/ext/disk_config/api/v1.1" xmlns:OS-EXT-SRV-ATTR="http://docs.openstack.org/compute/ext/extended_status/api/v1.1" xmlns:OS-EXT-STS="http://docs.openstack.org/compute/ext/extended_status/api/v1.1" xmlns:atom="http://www.w3.org/2005/Atom" xmlns="http://docs.openstack.org/compute/api/v1.1">
+<servers xmlns:OS-DCF="http://docs.openstack.org/compute/ext/disk_config/api/v1.1" xmlns:OS-EXT-SRV-ATTR="http://docs.openstack.org/compute/ext/extended_status/api/v1.1" xmlns:OS-EXT-STS="http://docs.openstack.org/compute/ext/extended_status/api/v1.1" xmlns:atom="http://www.w3.org/2005/Atom" xmlns="http://docs.openstack.org/compute/api/v1.1" xmlns:rax-bandwidth="http://docs.rackspace.com/servers/api/ext/server_bandwidth/">
   <server status="ACTIVE" updated="2012-11-15T19:28:34Z" hostId="aa999c3533a60f2569f2fb142139cdc522b43f9d4153d80bc29bc6ad" name="new-server-test" created="2012-11-15T19:28:34Z" userId="fake" tenantId="openstack" accessIPv4="" accessIPv6="" progress="0" id="3e89bf3c-4b6b-41c3-aafd-f0dabf5a1172" key_name="None" config_drive="" OS-EXT-SRV-ATTR:vm_state="active" OS-EXT-SRV-ATTR:task_state="None" OS-EXT-SRV-ATTR:power_state="1" OS-EXT-SRV-ATTR:instance_name="instance-00000001" OS-EXT-SRV-ATTR:host="b82eb08d8d4042a99cdd2bfcc749e057" OS-EXT-SRV-ATTR:hypervisor_hostname="fake-mini" OS-DCF:diskConfig="AUTO">
     <image id="70a599e0-31e7-49b7-b260-868f441e862b">
       <atom:link href="http://openstack.example.com/openstack/images/70a599e0-31e7-49b7-b260-868f441e862b" rel="bookmark"/>
@@ -20,5 +20,6 @@
     <security_groups>
       <security_group name="default"/>
     </security_groups>
+    <rax-bandwidth:bandwidth/>
   </server>
 </servers>
