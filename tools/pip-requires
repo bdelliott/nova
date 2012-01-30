@@ -26,3 +26,5 @@ python-glanceclient>=0.5.0,<2
 python-keystoneclient>=0.2.0
 stevedore>=0.7
 websockify
+tempo
+Requiem

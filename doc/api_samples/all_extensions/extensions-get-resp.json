@@ -455,6 +455,14 @@
             "name": "RaxServices",
             "namespace": "http://docs.openstack.org/ext/services/api/v1.1",
             "updated": "2012-11-27T00:00:00+00:00"
+        },
+        {
+            "alias": "rax-backup-schedule",
+            "description": "Backup scheduling support",
+            "links": [],
+            "name": "Backup_schedule",
+            "namespace": "http://docs.openstack.org/ext/backup-schedule/api/v1.1",
+            "updated": "2012-11-27T00:00:00+00:00"
         }
     ]
 }

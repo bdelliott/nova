@@ -188,4 +188,7 @@
   <extension alias="rax-services" updated="2012-11-27T00:00:00+00:00" namespace="http://docs.openstack.org/ext/services/api/v1.1" name="RaxServices">
     <description>Services support (custom to Rackspace)</description>
   </extension>
+  <extension alias="rax-backup-schedule" updated="2012-11-27T00:00:00+00:00" namespace="http://docs.openstack.org/ext/backup-schedule/api/v1.1" name="Backup_schedule">
+    <description>Backup scheduling support</description>
+  </extension>
 </extensions>
