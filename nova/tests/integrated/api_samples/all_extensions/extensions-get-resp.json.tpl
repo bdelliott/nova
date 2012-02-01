@@ -447,6 +447,14 @@
             "name": "ServerBandwidth",
             "namespace": "http://docs.rackspace.com/servers/api/ext/server_bandwidth/",
             "updated": "%(timestamp)s"
+        },
+        {
+            "alias": "rax-services",
+            "description": "%(text)s",
+            "links": [],
+            "name": "RaxServices",
+            "namespace": "http://docs.openstack.org/ext/services/api/v1.1",
+            "updated": "%(timestamp)s"
         }
     ]
 }

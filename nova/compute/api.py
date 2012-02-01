@@ -2410,6 +2410,9 @@ class HostAPI(base.Base):
     def compute_node_statistics(self, context):
         return self.db.compute_node_statistics(context)
 
+    def service_get(self, context, service_id):
+        return self.db.service_get(context, service_id)
+
 
 class AggregateAPI(base.Base):
     """Sub-set of the Compute Manager API for managing host aggregates."""

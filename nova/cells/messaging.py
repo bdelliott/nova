@@ -718,6 +718,11 @@ class _TargetedMessageMethods(_BaseMessageMethods):
                                                 compute_id)
         return jsonutils.to_primitive(compute_node)
 
+    def service_get(self, message, service_id):
+        """Get service entry by ID."""
+        service = self.db.service_get(message.ctxt, service_id)
+        return jsonutils.to_primitive(service)
+
 
 class _BroadcastMessageMethods(_BaseMessageMethods):
     """These are the methods that can be called as a part of a broadcast
@@ -1287,6 +1292,14 @@ class MessageRunner(object):
                                     method_kwargs,
                                     'up', run_locally=False)
         message.process()
+
+    def service_get(self, ctxt, cell_name, service_id):
+        """Return compute node entry from a specific cell by ID."""
+        method_kwargs = dict(service_id=service_id)
+        message = _TargetedMessage(self, ctxt, 'service_get',
+                                   method_kwargs, 'down',
+                                   cell_name, need_response=True)
+        return message.process()
 
     @staticmethod
     def get_message_types():

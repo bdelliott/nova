@@ -668,3 +668,6 @@ class HostAPI(compute_api.HostAPI):
 
     def compute_node_statistics(self, context):
         return self.cells_rpcapi.compute_node_stats(context)
+
+    def service_get(self, context, service_id):
+        return self.cells_rpcapi.service_get(context, service_id)

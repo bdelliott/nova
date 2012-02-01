@@ -242,3 +242,8 @@ class CellsAPI(rpc_proxy.RpcProxy):
                                       device_name=device_name,
                                       volume_id=volume_id),
                   version='1.5')
+
+    def service_get(self, ctxt, service_id):
+        """Get a compute node by ID in a specific cell."""
+        return self.call(ctxt, self.make_msg('service_get',
+                                             service_id=service_id))

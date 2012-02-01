@@ -352,3 +352,13 @@ class CellsManager(manager.Manager):
         self.msg_runner.bdm_destroy(ctxt, instance_uuid,
                                     device_name=device_name,
                                     volume_id=volume_id)
+
+    def service_get(self, ctxt, service_id):
+        """Get a compute node by ID in a specific cell."""
+        cell_name, service_id = cells_utils.split_cell_and_item(
+                service_id)
+        response = self.msg_runner.service_get(ctxt, cell_name,
+                                               service_id)
+        node = response.value_or_raise()
+        cells_utils.add_cell_to_service(node, cell_name)
+        return node
