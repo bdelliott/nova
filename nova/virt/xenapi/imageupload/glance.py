@@ -49,6 +49,7 @@ class GlanceStore(object):
                   'glance_use_ssl': glance_use_ssl,
                   'sr_path': vm_utils.get_sr_path(session),
                   'auth_token': getattr(context, 'auth_token', None),
+                  'project_id': context.project_id,
                   'properties': properties}
 
         session.call_plugin_serialized('glance', 'upload_vhd', **params)

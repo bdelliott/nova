@@ -1074,7 +1074,8 @@ def _fetch_vhd_image(context, session, instance, image_id):
 
     params = {'image_id': image_id,
               'uuid_stack': _make_uuid_stack(),
-              'sr_path': get_sr_path(session)}
+              'sr_path': get_sr_path(session),
+              'project_id': context.project_id}
 
     if _image_uses_bittorrent(context, instance):
         plugin_name = 'bittorrent'
