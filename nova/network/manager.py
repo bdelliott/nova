@@ -752,8 +752,9 @@ class NetworkManager(manager.Manager):
             else:
                 try:
                     mac = available_macs.pop()
-                except KeyError:
-                    raise exception.VirtualInterfaceCreateException()
+                except KeyError as e:
+                    raise exception.VirtualInterfaceCreateException(
+                            reason='%s' % e)
                 self._add_virtual_interface(context, instance_uuid,
                                            network['id'], mac)
 

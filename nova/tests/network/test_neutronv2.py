@@ -105,6 +105,7 @@ class TestNeutronClient(test.TestCase):
             auth_strategy=CONF.neutron_auth_strategy,
             endpoint_url=CONF.neutron_url,
             token=my_context.auth_token,
+            roles=[],
             timeout=CONF.neutron_url_timeout,
             insecure=False,
             ca_cert=None).AndReturn(None)
@@ -131,6 +132,7 @@ class TestNeutronClient(test.TestCase):
             token=my_context.auth_token,
             timeout=CONF.neutron_url_timeout,
             insecure=False,
+            roles=[],
             ca_cert=None).AndReturn(None)
         self.mox.ReplayAll()
         # Note that although we have admin set in the context we
@@ -2464,7 +2466,8 @@ class TestNeutronClientForAdminScenarios(test.TestCase):
             'timeout': CONF.neutron_url_timeout,
             'insecure': False,
             'ca_cert': None,
-            'token': None}
+            'token': None,
+            'roles': []}
         if use_id:
             kwargs['tenant_id'] = CONF.neutron_admin_tenant_id
         else:

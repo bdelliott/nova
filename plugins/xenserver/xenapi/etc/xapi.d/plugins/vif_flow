@@ -1,0 +1,55 @@
+#!/usr/bin/python
+
+import subprocess
+import XenAPIPlugin
+
+script_command = ('/etc/xensource/scripts/vif_flow reset vif-%s-%s -d')
+# usage:vif_flow [online|offline|reset] vif-domid-idx [ipv4|ipv6|all]
+
+
+# NOTE(tr3buchet): jkoelker listened to katy perry the whole time
+#                  he worked on chimera
+def reset_instance_flows(session, arg_dict):
+    domid = arg_dict['dom_id']
+    vif_indexes = get_output('xenstore-list',
+                             '/local/domain/%s/device/vif' % domid)
+    vif_indexes = vif_indexes.split('\n')
+
+    failed_commands = []
+    for vif_index in vif_indexes:
+        command = script_command % (domid, vif_index)
+        retcode = get_return_code(*command.split(' '))
+        if retcode:
+            failed_commands.append(command)
+    if failed_commands:
+        raise Exception('reset vif flows commands '
+                        'failed |%s| failed!' % failed_commands)
+
+    # NOTE(trb3uchet): not sure what else would make sense to return here
+    return 'success'
+
+
+def check_output(*popenargs, **kwargs):
+    kwargs['close_fds'] = kwargs.get('close_fds', True)
+    input = kwargs.pop('input', None)
+
+    if input is not None and kwargs.get('stdin') != subprocess.PIPE:
+        kwargs['stdin'] = subprocess.PIPE
+
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    output, unused_err = process.communicate(input=input)
+    retcode = process.poll()
+
+    return (retcode, output)
+
+
+def get_output(*command, **kwargs):
+    return check_output(command, **kwargs)[1].strip()
+
+
+def get_return_code(*command, **kwargs):
+    return check_output(command, **kwargs)[0]
+
+
+if __name__ == "__main__":
+    XenAPIPlugin.dispatch({"reset_instance_flows": reset_instance_flows})

@@ -840,7 +840,7 @@ class ComputeDriver(object):
         """
         raise NotImplementedError()
 
-    def reset_network(self, instance):
+    def reset_network(self, instance, replug_vifs=False):
         """reset networking for specified instance."""
         # TODO(Vek): Need to pass context in for access to auth_token
         pass
@@ -954,6 +954,14 @@ class ComputeDriver(object):
     def get_host_uptime(self, host):
         """Returns the result of calling "uptime" on the target host."""
         # TODO(Vek): Need to pass context in for access to auth_token
+        raise NotImplementedError()
+
+    def create_vif_for_instance(self, instance, vif_info, hotplug=False):
+        """Creates a new VIF and hotplugs it into the instance."""
+        raise NotImplementedError()
+
+    def delete_vif_for_instance(self, instance, vif_uuid, hotunplug=False):
+        """Hot unplugs a VIF from and instance."""
         raise NotImplementedError()
 
     def plug_vifs(self, instance, network_info):

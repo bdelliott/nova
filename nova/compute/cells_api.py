@@ -421,6 +421,23 @@ class ComputeCellsAPI(compute_api.API):
         self._cast_to_cells(context, instance, 'unlock')
 
     @check_instance_cell
+    def create_vifs_for_instance(self, context, instance, network_id):
+        """Creates and hotplugs new VIFs for the instance."""
+        super(ComputeCellsAPI, self).create_vifs_for_instance(context,
+                                                              instance,
+                                                              network_id,)
+        return self._call_to_cells(context, instance,
+                                   'create_vifs_for_instance', network_id)
+
+    @check_instance_cell
+    def delete_vifs_for_instance(self, context, instance, vifs):
+        """Hot unplugs and deletes VIFs from the instance."""
+        super(ComputeCellsAPI, self).delete_vifs_for_instance(context,
+                                                              instance, vifs)
+        self._cast_to_cells(context, instance, 'delete_vifs_for_instance',
+                            vifs)
+
+    @check_instance_cell
     def _attach_volume(self, context, instance, volume_id, device,
                        disk_bus, device_type):
         """Attach an existing volume to an existing instance."""

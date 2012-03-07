@@ -38,7 +38,7 @@ class AdminTokenStore(object):
         return cls._instance
 
 
-def _get_client(token=None, admin=False):
+def _get_client(token=None, admin=False, roles=None):
     params = {
         'endpoint_url': CONF.neutron_url,
         'timeout': CONF.neutron_url_timeout,
@@ -46,6 +46,7 @@ def _get_client(token=None, admin=False):
         'ca_cert': CONF.neutron_ca_certificates_file,
         'auth_strategy': CONF.neutron_auth_strategy,
         'token': token,
+        'roles': roles
     }
 
     if admin:
@@ -97,16 +98,17 @@ def get_client(context, admin=False):
     # it is an admin context.
     # This is to support some services (metadata API) where
     # an admin context is used without an auth token.
+    r = context.roles
     if admin or (context.is_admin and not context.auth_token):
         with lockutils.lock('neutron_admin_auth_token_lock'):
             orig_token = AdminTokenStore.get().admin_auth_token
-        client = _get_client(orig_token, admin=True)
+        client = _get_client(orig_token, admin=True, roles=r)
         return ClientWrapper(client)
 
     # We got a user token that we can use that as-is
     if context.auth_token:
         token = context.auth_token
-        return _get_client(token=token)
+        return _get_client(token=token, roles=r)
 
     # We did not get a user token and we should not be using
     # an admin token so log an error

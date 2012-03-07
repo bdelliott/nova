@@ -148,7 +148,7 @@ class DecryptionFailure(NovaException):
 
 
 class VirtualInterfaceCreateException(NovaException):
-    msg_fmt = _("Virtual Interface creation failed")
+    msg_fmt = _("Virtual Interface creation failed: %(reason)s")
 
 
 class VirtualInterfaceMacAddressException(NovaException):
@@ -1371,6 +1371,35 @@ class InstanceFaultRollback(NovaException):
         message = _("Instance rollback performed due to: %s")
         self.inner_exception = inner_exception
         super(InstanceFaultRollback, self).__init__(message % inner_exception)
+
+
+class VirtualInterfaceCleanupException(NovaException):
+    msg_fmt = _("Virtual Interface deallocation failed: %(reason)s")
+
+
+class VirtualInterfaceIntegrityException(NovaException):
+    msg_fmt = _("Virtual Interface has invalid data: %(reason)s")
+
+
+class AlreadyAttachedToNetwork(NovaException):
+    msg_fmt = _("Instance already attached to network")
+
+
+class NetworkOverQuota(NovaException):
+    code = 413
+    msg_fmt = _("Network Quota Error: %(msg)s")
+
+
+class NetworkFoundMultipleTimes(NotFound):
+    msg_fmt = _("Network %(network_id)s matched multiple networks!")
+
+
+class NetworkHostNotSet(NovaException):
+    msg_fmt = _("Host is not set to the network (%(network_id)s).")
+
+
+class NetworkBusy(NovaException):
+    msg_fmt = _("Network %(network)s has active ports, cannot delete.")
 
 
 class UnsupportedObjectError(NovaException):

@@ -345,13 +345,25 @@ class XenAPIDriver(driver.ComputeDriver):
         """Poll for rebooting instances."""
         self._vmops.poll_rebooting_instances(timeout, instances)
 
-    def reset_network(self, instance):
+    def reset_network(self, instance, reset_flows=False):
         """reset networking for specified instance."""
-        self._vmops.reset_network(instance)
+        self._vmops.reset_network(instance, reset_flows=reset_flows)
 
     def inject_network_info(self, instance, network_info):
         """inject network info for specified instance."""
         self._vmops.inject_network_info(instance, network_info)
+
+    def create_vif_for_instance(self, instance, vif_info, hotplug):
+        """Creates a new VIF and potentially hotplugs it
+        for specified instance
+        """
+        self._vmops.create_vif_for_instance(instance, vif_info, hotplug)
+
+    def delete_vif_for_instance(self, instance, vif, hot_unplug):
+        """Creates a new VIF and potentially hotplugs it
+        for specified instance
+        """
+        self._vmops.delete_vif_for_instance(instance, vif, hot_unplug)
 
     def plug_vifs(self, instance_ref, network_info):
         """Plug VIFs into networks."""

@@ -3604,7 +3604,8 @@ class LibvirtDriver(driver.ComputeDriver):
                     '%(event)s for instance %(uuid)s'),
                   {'event': event_name, 'uuid': instance.uuid})
         if CONF.vif_plugging_is_fatal:
-            raise exception.VirtualInterfaceCreateException()
+            # NOTE(alaski): Rax patch adds reason field to this exception
+            raise exception.VirtualInterfaceCreateException(reason='')
 
     def _get_neutron_events(self, network_info):
         # NOTE(danms): We need to collect any VIFs that are currently
@@ -3687,7 +3688,8 @@ class LibvirtDriver(driver.ComputeDriver):
                 domain.destroy()
                 self.cleanup(context, instance, network_info=network_info,
                              block_device_info=block_device_info)
-                raise exception.VirtualInterfaceCreateException()
+                raise exception.VirtualInterfaceCreateException(
+                        reason=_('Timeout'))
 
         # Resume only if domain has been paused
         if launch_flags & libvirt.VIR_DOMAIN_START_PAUSED:

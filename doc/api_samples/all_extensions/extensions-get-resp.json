@@ -489,6 +489,14 @@
             "updated": "2011-12-23T00:00:00Z"
         },
         {
+            "alias": "os-networksv2",
+            "description": "Network support (custom to Rackspace)",
+            "links": [],
+            "name": "OSNetworksV2",
+            "namespace": "http://docs.openstack.org/ext/services/api/v1.1",
+            "updated": "2012-11-27T00:00:00Z"
+        },
+        {
             "alias": "os-networks-associate",
             "description": "Network association support.",
             "links": [],
@@ -655,6 +663,14 @@
             "name": "VirtualInterfaces",
             "namespace": "http://docs.openstack.org/compute/ext/virtual_interfaces/api/v1.1",
             "updated": "2011-08-17T00:00:00Z"
+        },
+        {
+            "alias": "os-virtual-interfacesv2",
+            "description": "Virtual interface support (custom to Rackspace)",
+            "links": [],
+            "name": "VirtualInterfaces",
+            "namespace": "http://docs.openstack.org/compute/ext/virtual_interfacesv2/api/v1.1",
+            "updated": "2012-11-27T00:00:00Z"
         },
         {
             "alias": "os-volume-attachment-update",

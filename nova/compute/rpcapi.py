@@ -213,6 +213,7 @@ class ComputeAPI(object):
         2.48 - Make add_aggregate_host() and remove_aggregate_host() take
                new-world objects
         ...  - Remove live_snapshot() that was never actually used
+        2.49 - [rax] Adds create and delete_vifs_for_instance calls
 
         3.0 - Remove 2.x compatibility
         3.1 - Update get_spice_console() to take an instance object
@@ -549,6 +550,22 @@ class ComputeAPI(object):
         cctxt = self.client.prepare(server=_compute_host(None, instance),
                 version=version)
         cctxt.cast(ctxt, 'inject_network_info', instance=instance)
+
+    def create_vifs_for_instance(self, ctxt, instance, network_id):
+        version = self._get_compat_version('3.1', '2.49')
+        instance_p = jsonutils.to_primitive(instance)
+        cctxt = self.client.prepare(server=_compute_host(None, instance),
+                                    version=version)
+        return cctxt.call(ctxt, 'create_vifs_for_instance',
+                          instance=instance_p, network_id=network_id)
+
+    def delete_vifs_for_instance(self, ctxt, instance, vifs):
+        version = self._get_compat_version('3.1', '2.49')
+        instance_p = jsonutils.to_primitive(instance)
+        cctxt = self.client.prepare(server=_compute_host(None, instance),
+                                    version=version)
+        cctxt.cast(ctxt, 'delete_vifs_for_instance',
+                   instance=instance_p, vifs=vifs)
 
     def live_migration(self, ctxt, instance, dest, block_migration, host,
                        migrate_data=None):

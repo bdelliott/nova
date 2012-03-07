@@ -30,6 +30,7 @@ import logging
 import os
 import shutil
 import sys
+import tempfile
 import uuid
 
 import fixtures
@@ -49,6 +50,7 @@ from nova.openstack.common.fixture import moxstubout
 from nova.openstack.common import log as nova_logging
 from nova.openstack.common import timeutils
 from nova import paths
+from nova import quota
 from nova import rpc
 from nova import service
 from nova.tests import conf_fixture
@@ -81,6 +83,8 @@ objects.register_all()
 
 _DB_CACHE = None
 _TRUE_VALUES = ('True', 'true', '1', 'yes')
+
+QUOTAS = quota.QUOTAS
 
 
 class Database(fixtures.Fixture):
@@ -326,6 +330,14 @@ class TestCase(testtools.TestCase):
         CONF.set_override('fatal_exception_format_errors', True)
         CONF.set_override('enabled', True, 'osapi_v3')
         CONF.set_override('force_dhcp_release', False)
+        # This will be cleaned up by the NestedTempfile fixture
+        CONF.set_override('lock_path', tempfile.mkdtemp())
+        self.addCleanup(self._reset_quotas)
+
+    def _reset_quotas(self):
+        # FIXME(johannes): This is an ugly hack until we can fix extensions
+        # so they can be unloaded to properly isolate tests
+        QUOTAS._resources.pop('networks', None)
 
     def _restore_obj_registry(self):
         objects_base.NovaObject._obj_classes = self._base_test_obj_backup

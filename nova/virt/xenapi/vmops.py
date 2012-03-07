@@ -103,6 +103,8 @@ CONF = cfg.CONF
 CONF.register_opts(xenapi_vmops_opts, 'xenserver')
 CONF.import_opt('host', 'nova.netconf')
 CONF.import_opt('vncserver_proxyclient_address', 'nova.vnc')
+CONF.import_opt('rxtx_base', 'nova.network.quantum2.manager')
+CONF.import_opt('rs_dual_mode', 'nova.network.quantum2.manager')
 
 DEFAULT_FIREWALL_DRIVER = "%s.%s" % (
     firewall.__name__,
@@ -1608,10 +1610,13 @@ class VMOps(object):
         vm_rec = self._session.call_xenapi("VM.get_record", vm_ref)
         return vm_utils.compile_diagnostics(vm_rec)
 
+    def _get_vifs_for_instance(self, vm_rec):
+        return [self._session.call_xenapi("VIF.get_record", vrec)
+                    for vrec in vm_rec['VIFs']]
+
     def _get_vif_device_map(self, vm_rec):
         vif_map = {}
-        for vif in [self._session.call_xenapi("VIF.get_record", vrec)
-                    for vrec in vm_rec['VIFs']]:
+        for vif in self._get_vifs_for_instance(vm_rec):
             vif_map[vif['device']] = vif['MAC']
         return vif_map
 
@@ -1733,7 +1738,55 @@ class VMOps(object):
         if dns:
             info_dict['dns'] = list(set(dns))
 
+        if vif.get_meta('rackconnect'):
+            info_dict['rackconnect'] = True
+
         return info_dict
+
+    def _remove_vif_from_network_info(self, instance, vm_ref, mac):
+        location = ('vm-data/networking/%s' % mac.replace(':', ''))
+        self._remove_from_param_xenstore(vm_ref, location)
+        try:
+            self._delete_from_xenstore(instance, location,
+                                               vm_ref=vm_ref)
+        except exception.InstanceNotFound:
+            # If the VM is not running then no need to update
+            # the live xenstore - the param xenstore will be
+            # used next time the VM is booted
+            pass
+
+    def _get_highest_vif_device_id(self, vm_rec):
+        """Enumerates all the VIFs and gets the next highest device id."""
+        max_device = -1
+        for device, vif in self._get_vif_device_map(vm_rec).iteritems():
+            max_device = max(int(device), max_device)
+        return max_device + 1
+
+    def create_vif_for_instance(self, instance, vif_info, hotplug):
+        vm_ref = vm_utils.lookup(self._session, instance["name"])
+        vm_rec = self._session.call_xenapi("VM.get_record", vm_ref)
+        device = self._get_highest_vif_device_id(vm_rec)
+        vif_rec = self.vif_driver.plug(instance, vif_info,
+                                       vm_ref=vm_ref, device=device)
+        vif_ref = self._session.call_xenapi('VIF.create', vif_rec)
+        if hotplug:
+            self._session.call_xenapi('VIF.plug', vif_ref)
+        return vif_ref
+
+    def delete_vif_for_instance(self, instance, vif, hot_unplug):
+        vm_ref = vm_utils.lookup(self._session, instance["name"])
+        vm_rec = self._session.call_xenapi("VM.get_record", vm_ref)
+        for vif_rec in self._get_vifs_for_instance(vm_rec):
+            if vif_rec["MAC"] == vif["address"]:
+                vif_ref = self._session.call_xenapi("VIF.get_by_uuid",
+                                                    vif_rec["uuid"])
+                if hot_unplug:
+                    self._session.call_xenapi("VIF.unplug", vif_ref)
+                self._session.call_xenapi("VIF.destroy", vif_ref)
+                self._remove_vif_from_network_info(instance, vm_ref,
+                                                   vif["address"])
+                return
+        raise Exception(_("No VIF found for instance %s") % instance["uuid"])
 
     def inject_network_info(self, instance, network_info, vm_ref=None):
         """Generate the network info and make calls to place it into the
@@ -1746,6 +1799,23 @@ class VMOps(object):
 
         @utils.synchronized('xenstore-' + instance['uuid'])
         def update_nwinfo():
+            #NOTE(tr3buchet) write meta field with qos data in it (for now)
+            flavor = flavors.extract_flavor(instance)
+            rxtx_factor = flavor['rxtx_factor']
+            if rxtx_factor is not None:
+                rxtx_cap = {'rxtx_cap': rxtx_factor * CONF.rxtx_base}
+                location = 'vm-data/meta'
+                self._add_to_param_xenstore(vm_ref,
+                                            location,
+                                            jsonutils.dumps(rxtx_cap))
+                try:
+                    self._write_to_xenstore(instance, location, rxtx_cap,
+                                            vm_ref=vm_ref)
+                except exception.InstanceNotFound:
+                    # If the VM is not running, no need to update the
+                    # live xenstore
+                    pass
+
             for vif in network_info:
                 xs_data = self._vif_xenstore_data(vif)
                 location = ('vm-data/networking/%s' %
@@ -1791,8 +1861,11 @@ class VMOps(object):
             for vif in network_info:
                 self.vif_driver.unplug(instance, vif)
 
-    def reset_network(self, instance, rescue=False):
+    def reset_network(self, instance, rescue=False, reset_flows=False):
         """Calls resetnetwork method in agent."""
+        if CONF.rs_dual_mode and reset_flows:
+            self._make_plugin_call('vif_flow', 'reset_instance_flows',
+                                   instance)
         if self.agent_enabled(instance):
             vm_ref = self._get_vm_opaque_ref(instance)
             agent = self._get_agent(instance, vm_ref)

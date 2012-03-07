@@ -817,6 +817,7 @@ class Controller(wsgi.Controller):
 
         requested_networks = None
         if (self.ext_mgr.is_loaded('os-networks')
+                or self.ext_mgr.is_loaded('os-networksv2')
                 or utils.is_neutron()):
             requested_networks = server_dict.get('networks')
 

@@ -17,6 +17,10 @@
 #    under the License.
 
 import functools
+import time
+
+from oslo.config import cfg
+from oslo import messaging
 
 from nova.compute import flavors
 from nova import exception
@@ -32,6 +36,26 @@ from nova.openstack.common.gettextutils import _
 from nova.openstack.common import log as logging
 from nova import policy
 from nova import utils
+
+network_api_opts = [
+        cfg.IntOpt("get_nwinfo_timeout_retries",
+                default=5,
+                help="How many times to retry get_nwinfo on timeouts"),
+        cfg.IntOpt("get_nwinfo_timeout_retry_delay",
+                default=2,
+                help="Delay in seconds before retrying get_nwinfo on "
+                        "timeouts"),
+        cfg.IntOpt("get_nwinfo_error_retries",
+                default=2,
+                help="How many times to retry get_nwinfo on errors"),
+        cfg.IntOpt("get_nwinfo_error_retry_delay",
+                default=2,
+                help="Delay in seconds before retrying get_nwinfo on "
+                        "errors"),
+]
+
+CONF = cfg.CONF
+CONF.register_opts(network_api_opts)
 
 LOG = logging.getLogger(__name__)
 
@@ -362,7 +386,35 @@ class API(base_api.NetworkAPI):
                 'rxtx_factor': flavor['rxtx_factor'],
                 'host': instance['host'],
                 'project_id': instance['project_id']}
-        nw_info = self.network_rpcapi.get_instance_nw_info(context, **args)
+
+        num_tries = 1 + max(CONF.get_nwinfo_timeout_retries,
+            CONF.get_nwinfo_error_retries)
+        for i in xrange(num_tries):
+            try:
+                nw_info = self.network_rpcapi.get_instance_nw_info(context,
+                                                                   **args)
+                break
+            except messaging.MessagingTimeout as e:
+                tries_left = num_tries - i - 1
+                if not tries_left:
+                    raise
+                sleep_time = (i + 1) * CONF.get_nwinfo_timeout_retry_delay
+                LOG.error(_("Timeout getting nw_info: %(e)s: "
+                            "%(tries_left)s retry/retries left.  Next "
+                            "retry in %(sleep_time)d second(s)") %
+                          {'e': unicode(e), 'tries_left': tries_left,
+                           'sleep_time': sleep_time})
+            except Exception as e:
+                tries_left = num_tries - i - 1
+                if not tries_left:
+                    raise
+                sleep_time = (i + 1) * CONF.get_nwinfo_error_retry_delay
+                LOG.error(_("Error getting nw_info: %(e)s: "
+                            "%(tries_left)s retry/retries left.  Next "
+                            "retry in %(sleep_time)d second(s)") %
+                          {'e': unicode(e), 'tries_left': tries_left,
+                           'sleep_time': sleep_time})
+            time.sleep(sleep_time)
 
         return network_model.NetworkInfo.hydrate(nw_info)
 

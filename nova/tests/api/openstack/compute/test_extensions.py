@@ -258,7 +258,12 @@ class ExtensionControllerTest(ExtensionTestCase):
         data = jsonutils.loads(response.body)
         names = [str(x['name']) for x in data['extensions']
                  if str(x['name']) in self.ext_list]
+
+        # HACK(belliott) - we have 2 virtual interface extensions with the same
+        # name because of our v2 one.  uniquify the names:
+        names = list(set(names))
         names.sort()
+
         self.assertEqual(names, self.ext_list)
 
         # Ensure all the timestamps are valid according to iso8601

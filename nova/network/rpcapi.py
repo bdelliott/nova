@@ -31,6 +31,9 @@ rpcapi_opts = [
                 default=False,
                 help='Default value for multi_host in networks. Also, if set, '
                      'some rpc network calls will be sent directly to host.'),
+    cfg.IntOpt('nova_network_rpc_timeout',
+                default=None,
+                help='Default nova network service rpc timeout'),
 ]
 
 CONF = cfg.CONF
@@ -95,6 +98,14 @@ class NetworkAPI(object):
                                                CONF.upgrade_levels.network)
         serializer = objects_base.NovaObjectSerializer()
         self.client = rpc.get_client(target, version_cap, serializer)
+
+    def call(self, context, msg, topic=None, version=None, timeout=None):
+        network_rpc_timeout = CONF.nova_network_rpc_timeout
+        return super(NetworkAPI, self).call(context, msg, topic, version,
+                                            timeout=network_rpc_timeout)
+
+    def get_all_networks(self, ctxt):
+        return self.client.call(ctxt, 'get_all_networks')
 
     # TODO(russellb): Convert this to named arguments.  It's a pretty large
     # list, so unwinding it all is probably best done in its own patch so it's

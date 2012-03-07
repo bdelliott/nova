@@ -2711,7 +2711,7 @@ class ComputeTestCase(BaseTestCase):
         # Ensure we can reset networking on an instance.
         called = {'count': 0}
 
-        def fake_driver_reset_network(self, instance):
+        def fake_driver_reset_network(self, instance, replug_vifs=False):
             called['count'] += 1
 
         self.stubs.Set(nova.virt.fake.FakeDriver, 'reset_network',
