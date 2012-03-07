@@ -2421,6 +2421,50 @@ class ComputeManager(manager.SchedulerDependentManager):
         """Inject network info, but don't return the info."""
         self._inject_network_info(context, instance)
 
+    @wrap_instance_fault
+    def create_vifs_for_instance(self, context, instance, network_id):
+        """Creates and hotplugs new VIFs for an instance."""
+        try:
+            interfaces = self.network_api.allocate_interface_for_instance(
+                                        context, instance, network_id)
+        except exception.AlreadyAttachedToNetwork:
+            msg = _("Instance already attached to network")
+            LOG.exception(msg, context, instance)
+            raise exception.AlreadyAttachedToNetwork(msg)
+        except exception.NetworkOverQuota:
+            msg = _("Too many instances attached to private network")
+            LOG.exception(msg, context, instance)
+            raise exception.NetworkOverQuota(msg)
+        try:
+            for vif in interfaces:
+                self.driver.create_vif_for_instance(instance, vif,
+                                                    hotplug=True)
+            self.inject_network_info(context, instance)
+            self.reset_network(context, instance)
+        except Exception:  # pylint: disable=W0702
+            for iface in interfaces:
+                self.network_api.deallocate_interface_for_instance(
+                                                context,
+                                                instance,
+                                                iface["id"])
+            instance_id = instance["id"]
+            msg = _("Unable to create new interface for "
+                    "instance %(instance_id)s on network %(network_id)s")
+            LOG.exception(msg % locals(), context=context, instance=instance)
+            raise
+        return interfaces
+
+    @wrap_instance_fault
+    def delete_vifs_for_instance(self, context, instance, vifs):
+        """Hot unplugs and deletes VIFs from an instance."""
+        for vif in vifs:
+            interface = self.network_api.deallocate_interface_for_instance(
+                                                context, instance, vif)
+            self.driver.delete_vif_for_instance(instance, interface,
+                                                hot_unplug=True)
+        self.inject_network_info(context, instance)
+        self.reset_network(context, instance)
+
     @exception.wrap_exception(notifier=notifier, publisher_id=publisher_id())
     @wrap_instance_fault
     def get_console_output(self, context, instance, tail_length=None):

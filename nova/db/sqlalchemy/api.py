@@ -1251,8 +1251,8 @@ def virtual_interface_create(context, values):
         vif_ref = models.VirtualInterface()
         vif_ref.update(values)
         vif_ref.save()
-    except exception.DBError:
-        raise exception.VirtualInterfaceCreateException()
+    except exception.DBError, e:
+        raise exception.VirtualInterfaceCreateException(reason='%s' % e)
 
     return vif_ref
 

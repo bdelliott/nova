@@ -345,6 +345,14 @@
             "updated": "%(timestamp)s"
         },
         {
+            "alias": "os-networksv2",
+            "description": "%(text)s",
+            "links": [],
+            "name": "OSNetworksV2",
+            "namespace": "http://docs.openstack.org/ext/services/api/v1.1",
+            "updated": "%(timestamp)s"
+        },
+        {
             "alias": "os-quota-class-sets",
             "description": "%(text)s",
             "links": [],
@@ -462,6 +470,14 @@
             "links": [],
             "name": "RaxServices",
             "namespace": "http://docs.openstack.org/ext/services/api/v1.1",
+            "updated": "%(timestamp)s"
+        },
+        {
+            "alias": "os-virtual-interfacesv2",
+            "description": "%(text)s",
+            "links": [],
+            "name": "VirtualInterfaces",
+            "namespace": "http://docs.openstack.org/compute/ext/virtual_interfacesv2/api/v1.1",
             "updated": "%(timestamp)s"
         }
     ]

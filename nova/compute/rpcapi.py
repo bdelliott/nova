@@ -149,6 +149,7 @@ class ComputeAPI(nova.openstack.common.rpc.proxy.RpcProxy):
         2.13 - Remove migration_id, add migration to finish_revert_resize
         2.14 - Remove aggregate_id, add aggregate to add_aggregate_host
         2.15 - Remove aggregate_id, add aggregate to remove_aggregate_host
+        2.16 - [rax] Adds create and delete_vifs_for_instance calls
         2.16 - Add instance_type to resize_instance
         2.17 - Add get_backdoor_port()
         2.18 - Add bdms to rebuild_instance
@@ -333,6 +334,20 @@ class ComputeAPI(nova.openstack.common.rpc.proxy.RpcProxy):
         self.cast(ctxt, self.make_msg('inject_network_info',
                 instance=instance_p),
                 topic=_compute_topic(self.topic, ctxt, None, instance))
+
+    def create_vifs_for_instance(self, ctxt, instance, network_id):
+        instance_p = jsonutils.to_primitive(instance)
+        return self.call(ctxt, self.make_msg('create_vifs_for_instance',
+                        instance=instance_p, network_id=network_id),
+                        topic=_compute_topic(self.topic, ctxt, None, instance),
+                        version='2.16')
+
+    def delete_vifs_for_instance(self, ctxt, instance, vifs):
+        instance_p = jsonutils.to_primitive(instance)
+        self.cast(ctxt, self.make_msg('delete_vifs_for_instance',
+                instance=instance_p, vifs=vifs),
+                topic=_compute_topic(self.topic, ctxt, None, instance),
+                version='2.16')
 
     def live_migration(self, ctxt, instance, dest, block_migration, host,
                        migrate_data=None):

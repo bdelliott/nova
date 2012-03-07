@@ -157,9 +157,13 @@ class NetworkAPI(rpc_proxy.RpcProxy):
                 project_id=project_id, host=host, rxtx_factor=rxtx_factor,
                 vpn=vpn, requested_networks=requested_networks))
 
-    def deallocate_for_instance(self, ctxt, instance_id, project_id, host):
+    def deallocate_for_instance(self, ctxt, instance_id, instance_uuid,
+                                project_id, host):
         return self.call(ctxt, self.make_msg('deallocate_for_instance',
-                instance_id=instance_id, project_id=project_id, host=host))
+                                             instance_id=instance_id,
+                                             instance_uuid=instance_uuid,
+                                             project_id=project_id,
+                                             host=host))
 
     def add_fixed_ip_to_instance(self, ctxt, instance_id, host, network_id):
         return self.call(ctxt, self.make_msg('add_fixed_ip_to_instance',
