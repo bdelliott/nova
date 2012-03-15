@@ -71,10 +71,15 @@ xenapi_vmops_opts = [
                deprecated_group='DEFAULT',
                help='The XenAPI VIF driver using XenServer Network APIs.'),
     cfg.StrOpt('image_upload_handler',
-                default='nova.virt.xenapi.image.glance.GlanceStore',
+               default='nova.virt.xenapi.image.glance.GlanceStore',
                deprecated_name='xenapi_image_upload_handler',
                deprecated_group='DEFAULT',
                help='Dom0 plugin driver used to handle image uploads.'),
+    cfg.StrOpt('image_activation_file',
+                default=None,
+                deprecated_name='image_activation_file',
+                deprecated_group='DEFAULT',
+                help=_('JSON file containing image activation configuration')),
     ]
 
 CONF = cfg.CONF
@@ -104,6 +109,57 @@ DEVICE_EPHEMERAL = '4'
 # Note(johngarbutt) Currently don't support ISO boot during rescue
 # and we must have the ISO visible before the PV drivers start
 DEVICE_CD = '1'
+
+
+class RaxImageActivationConfig(object):
+    """Manage RAX image license activation config state."""
+    def __init__(self):
+        self._cache = {}
+
+        if CONF.xenserver.image_activation_file:
+            self._file_path = CONF.find_file(
+                    CONF.xenserver.image_activation_file)
+            self.reload()
+
+    def reload(self):
+        """(Re)load config from JSON file
+        The file is a dict mapping each activation profile idsto
+        a configuration value.
+        E.x. file:
+        {
+            "1-2-3-4-5": "useful_config_value"
+        }
+        """
+
+        def _reload(data):
+            self._config = jsonutils.loads(data)
+
+        utils.read_cached_file(self._file_path, self._cache,
+                               reload_func=_reload)
+
+    def get(self, profile_name):
+        """Get config values for the given profile name."""
+
+        if not CONF.xenserver.image_activation_file:
+            return None
+
+        self.reload()
+        return self._config.get(profile_name)
+
+
+def cmp_version(a, b):
+    """Compare two version strings (eg 0.0.1.10 > 0.0.1.9)."""
+    a = a.split('.')
+    b = b.split('.')
+
+    # Compare each individual portion of both version strings
+    for va, vb in zip(a, b):
+        ret = int(va) - int(vb)
+        if ret:
+            return ret
+
+    # Fallback to comparing length last
+    return len(a) - len(b)
 
 
 def make_step_decorator(context, instance, update_instance_progress,
@@ -166,6 +222,8 @@ class VMOps(object):
         vif_impl = importutils.import_class(CONF.xenserver.vif_driver)
         self.vif_driver = vif_impl(xenapi_session=self._session)
         self.default_root_dev = '/dev/sda'
+        # configs for image license activation:
+        self._rax_image_activation_config = RaxImageActivationConfig()
 
         LOG.debug(_("Importing image upload handler: %s"),
                   CONF.xenserver.image_upload_handler)
@@ -484,7 +542,7 @@ class VMOps(object):
         def configure_booted_instance_step(undo_mgr, vm_ref):
             if first_boot:
                 self._configure_new_instance_with_agent(instance, vm_ref,
-                        injected_files, admin_password)
+                        injected_files, admin_password, image_meta)
                 self._remove_hostname(instance, vm_ref)
 
         @step
@@ -651,7 +709,8 @@ class VMOps(object):
             greenthread.sleep(0.5)
 
     def _configure_new_instance_with_agent(self, instance, vm_ref,
-                                           injected_files, admin_password):
+                                           injected_files, admin_password,
+                                           image_meta):
         if not self.agent_enabled(instance):
             LOG.debug(_("Skip agent setup, not enabled."), instance=instance)
             return
@@ -678,6 +737,19 @@ class VMOps(object):
 
         agent.resetnetwork()
         agent.update_if_needed(version)
+
+        # Activate OS (if necessary)
+        profile = image_meta.get('properties', {}).\
+                             get('rax_activation_profile')
+        if profile:
+            LOG.debug(_("RAX Activation Profile: %r"), profile,
+                      instance=instance)
+
+            # get matching activation config for this profile:
+            config = self._rax_image_activation_config.get(profile)
+            if config:
+                agent.activate_instance(self._session, instance, vm_ref,
+                                        config)
 
     def _prepare_instance_filter(self, instance, network_info):
         try:

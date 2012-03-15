@@ -202,6 +202,17 @@ class FileInjectionTestCase(AgentTestCaseBase):
         agent.inject_files(files)
 
 
+class ActivateInstanceTestCase(AgentTestCaseBase):
+    @mock.patch.object(agent.XenAPIBasedAgent, '_call_agent')
+    def test_activate_instance_no_config(self, mock_call_agent):
+        agent = self._create_agent(None)
+        self.flags(agent_os_activation_timeout=42, group='xenserver')
+
+        agent.activate_instance('session', 'instance', 'vm_ref', None)
+        mock_call_agent.assert_called_once_with('kmsactivate',
+                                        {'config': 'null', 'timeout': '42'})
+
+
 class SetAdminPasswordTestCase(AgentTestCaseBase):
     @mock.patch.object(agent.XenAPIBasedAgent, '_call_agent')
     @mock.patch("nova.virt.xenapi.agent.SimpleDH")

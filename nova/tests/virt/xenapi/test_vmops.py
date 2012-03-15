@@ -24,6 +24,7 @@ from nova.pci import pci_manager
 from nova import test
 from nova.tests import fake_instance
 from nova.tests.virt.xenapi import stubs
+from nova import utils
 from nova.virt import fake
 from nova.virt.xenapi import agent as xenapi_agent
 from nova.virt.xenapi.client import session as xenapi_session
@@ -31,6 +32,7 @@ from nova.virt.xenapi import fake as xenapi_fake
 from nova.virt.xenapi import vm_utils
 from nova.virt.xenapi import vmops
 from nova.virt.xenapi import volumeops
+from oslo.config import cfg
 
 
 class VMOpsTestBase(stubs.XenAPITestBaseNoDB):
@@ -354,7 +356,7 @@ class SpawnTestCase(VMOpsTestBase):
         self.vmops._update_instance_progress(context, instance, step, steps)
 
         self.vmops._configure_new_instance_with_agent(instance, vm_ref,
-                injected_files, admin_password)
+                injected_files, admin_password, image_meta)
         self.vmops._remove_hostname(instance, vm_ref)
         step += 1
         self.vmops._update_instance_progress(context, instance, step, steps)
@@ -589,6 +591,7 @@ class SpawnTestCase(VMOpsTestBase):
         vm_ref = 'vm_ref'
         agent = xenapi_agent.XenAPIBasedAgent(self.vmops._session,
                 self.vmops._virtapi, instance, vm_ref)
+        image_meta = {}
 
         self.mox.StubOutWithMock(xenapi_agent, 'should_use_agent')
         self.mox.StubOutWithMock(self.vmops, '_get_agent')
@@ -604,7 +607,7 @@ class SpawnTestCase(VMOpsTestBase):
 
         self.mox.ReplayAll()
         self.vmops._configure_new_instance_with_agent(instance, vm_ref,
-                None, None)
+                None, None, image_meta)
 
 
 @mock.patch.object(vmops.VMOps, '_update_instance_progress')
@@ -644,6 +647,29 @@ class MigrateDiskAndPowerOffTestCase(VMOpsTestBase):
         self.assertRaises(exception.ResizeError,
                           self.vmops.migrate_disk_and_power_off,
                           None, instance, None, flavor, None)
+
+
+class RaxImageActivationConfigTestCase(test.NoDBTestCase):
+    def test_rax_image_activation_no_config_get(self):
+        self.flags(image_activation_file=None, group='xenserver')
+        activation_config = vmops.RaxImageActivationConfig()
+        self.assertEqual(None, activation_config.get('profile'))
+
+    @mock.patch.object(utils, 'read_cached_file')
+    @mock.patch.object(cfg.ConfigOpts, 'find_file')
+    def test_rax_image_activation_profile(self, mock_find_file,
+                                          mock_read_cached_file):
+        def _read_cached_file_mock(file_path, cache,
+                                   reload_func=lambda data: data):
+            reload_func('{"profile":"profile_data"}')
+
+        self.flags(image_activation_file='filename', group='xenserver')
+        mock_find_file.return_value = 'filepath'
+
+        mock_read_cached_file.side_effect = _read_cached_file_mock
+        activation_config = vmops.RaxImageActivationConfig()
+        mock_find_file.assert_called_once_with('filename')
+        self.assertEqual('profile_data', activation_config.get('profile'))
 
 
 @mock.patch.object(vm_utils, 'migrate_vhd')

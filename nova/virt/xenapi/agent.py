@@ -17,6 +17,7 @@ import base64
 import binascii
 from distutils import version
 import os
+import random
 import sys
 import time
 import uuid
@@ -57,6 +58,10 @@ xenapi_agent_opts = [
                deprecated_group='DEFAULT',
                help='Number of seconds to wait for agent '
                     'to be fully operational'),
+    cfg.IntOpt('agent_os_activation_timeout',
+               default=180,
+               help='Number of seconds to wait for agent '
+                    'to finish os activation'),
     cfg.IntOpt('agent_resetnetwork_timeout',
                deprecated_name='agent_resetnetwork_timeout',
                deprecated_group='DEFAULT',
@@ -361,6 +366,23 @@ class XenAPIBasedAgent(object):
         sys_meta = utils.instance_sys_meta(self.instance)
         raw_value = sys_meta.get(key, 'False')
         return strutils.bool_from_string(raw_value, strict=False)
+
+    def activate_instance(self, session, instance, vm_ref, config):
+        """Creates uuid arg to pass to make_agent_call and calls it."""
+
+        # Windows doesn't use a dict, but also doesn't have a list of
+        # domains nor a profile name
+        if isinstance(config, dict):
+            if 'domains' in config:
+                # Shuffle list so not all instances prefer the same server
+                random.shuffle(config['domains'])
+            config['profile'] = instance['name']
+
+        args = {
+            'config': jsonutils.dumps(config),
+            'timeout': str(CONF.xenserver.agent_os_activation_timeout),
+        }
+        return self._call_agent('kmsactivate', args)
 
 
 def find_guest_agent(base_dir):
