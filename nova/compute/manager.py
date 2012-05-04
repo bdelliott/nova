@@ -2551,6 +2551,16 @@ class ComputeManager(manager.Manager):
                 for bdm in bdms)):
             bdms = None
 
+        # This is a grievous hack to make usage happy for the moment
+        # We will remove this when their system is fixed. (mdragon)
+        if isinstance(instance, dict):
+            instance = instance_obj.Instance._from_db_object(context,
+                    instance_obj.Instance(), instance,
+                    expected_attrs=['metadata', 'system_metadata'])
+        instance.launched_at = timeutils.utcnow()
+        instance.save()
+        # Endhack.
+
         orig_vm_state = instance.vm_state
         with self._error_out_instance_on_exception(context, instance.uuid):
             LOG.audit(_("Rebuilding instance"), context=context,
@@ -3296,6 +3306,12 @@ class ComputeManager(manager.Manager):
                                                      reservations,
                                                      instance=instance)
 
+        # This is a grievous hack to make usage happy for the moment
+        # We will remove this when their system is fixed. (mdragon)
+        instance.launched_at = timeutils.utcnow()
+        instance.save()
+        # Endhack.
+
         # NOTE(comstud): A revert_resize is essentially a resize back to
         # the old size, so we need to send a usage event here.
         self.conductor_api.notify_usage_exists(
@@ -3472,6 +3488,12 @@ class ComputeManager(manager.Manager):
                                                      instance=instance)
         with self._error_out_instance_on_exception(context, instance['uuid'],
                                                    quotas=quotas):
+            # This is a grievous hack to make usage happy for the moment
+            # We will remove this when their system is fixed. (mdragon)
+            instance.launched_at = timeutils.utcnow()
+            instance.save()
+            # Endhack.
+
             self.conductor_api.notify_usage_exists(
                     context, instance, current_period=True)
             self._notify_about_instance_usage(
