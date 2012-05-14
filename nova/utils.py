@@ -38,6 +38,7 @@ import tempfile
 import time
 from xml.sax import saxutils
 
+from Crypto.PublicKey import RSA
 from eventlet import event
 from eventlet.green import subprocess
 from eventlet import greenthread
@@ -1284,3 +1285,13 @@ def metadata_to_dict(metadata):
         if not item.get('deleted'):
             result[item['key']] = item['value']
     return result
+
+
+def encrypt_rsa(public_key, plain_text):
+    if 'importKey' not in dir(RSA):
+        # PyCrypto2.1 compat
+        import nova.compat.pycrypto21
+        nova.compat.pycrypto21.monkey_patch()
+
+    # NOTE(sirp): K-param is not used by RSA
+    return RSA.importKey(public_key).encrypt(plain_text, None)[0]
