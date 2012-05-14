@@ -122,6 +122,12 @@ compute_opts = [
     cfg.IntOpt('network_allocate_retries',
                default=0,
                help="Number of times to retry network allocation on failures"),
+    cfg.ListOpt('password_aware_services',
+                default=[],
+                help='Public keys for services that will receive access to the'
+                     ' instance root password. Format is:'
+                     ' <target>:<key_version>:<path-to-public-key-file> ('
+                     ' Ex. "rack_connect:123:/tmp/rack_connect_123.pub")'),
     ]
 
 interval_opts = [
@@ -1219,6 +1225,40 @@ class ComputeManager(manager.Manager):
 
         return [_decode(f) for f in injected_files]
 
+    def _get_password_info(self, context, admin_password):
+        """Create encrypted password info that will be passed to specified
+        services via notifications.
+
+        The admin_password is encrypted using a public key supplied for each
+        service. Since the keys for a service may need to change, a version
+        number is also passed so the receiver knows which private key to use to
+        decrypt.
+        """
+        password_info = []
+        for service in CONF.password_aware_services:
+            target, key_version, public_key_filename = service.split(':')
+
+            if target not in context.roles:
+                continue
+
+            with open(public_key_filename, 'r') as f:
+                public_key = f.read()
+
+            # Create byte-stream
+            plain_text = admin_password.encode('utf8')
+
+            # Encrypt using service's public key
+            encrypted_password = utils.encrypt_rsa(
+                public_key, plain_text)
+
+            # Base64 encode to make results transport friendly
+            encrypted_password = encrypted_password.encode('base64')
+
+            password_info.append(dict(target=target,
+                                      key_version=key_version,
+                                      value=encrypted_password))
+        return password_info
+
     def _run_instance(self, context, request_spec,
                       filter_properties, requested_networks, injected_files,
                       admin_password, is_first_time, node, instance,
@@ -1244,6 +1284,11 @@ class ComputeManager(manager.Manager):
                 image_meta = {}
 
             extra_usage_info = {"image_name": image_meta.get('name', '')}
+
+            if admin_password:
+                password_info = self._get_password_info(context,
+                        admin_password)
+                extra_usage_info['password_info'] = password_info
 
             notify("start")  # notify that build is starting
 
@@ -2565,6 +2610,13 @@ class ComputeManager(manager.Manager):
 
             # This message should contain the new image_ref
             extra_usage_info = {'image_name': image_meta.get('name', '')}
+
+            admin_password = new_pass
+
+            # Get encrypted password for notifications
+            password_info = self._get_password_info(context, admin_password)
+            extra_usage_info['password_info'] = password_info
+
             self._notify_about_instance_usage(context, instance,
                     "rebuild.start", extra_usage_info=extra_usage_info)
 

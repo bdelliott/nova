@@ -4406,6 +4406,117 @@ class ComputeTestCase(BaseTestCase):
         self.compute.terminate_instance(self.context,
                 self._objectify(inst_ref), [], [])
 
+    def test_run_instance_notification_pass_info(self):
+        # rackconnect instances should send a 'password_info' field in
+        # notifications:
+        fake_notifier.NOTIFICATIONS = []
+        password = "by the power of greyskull"
+        inst_ref = jsonutils.to_primitive(self._create_fake_instance())
+
+        self.compute.run_instance(self.context, inst_ref, {}, {}, None, None,
+                password, True, None, False)
+
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 2)
+        msg = fake_notifier.NOTIFICATIONS[0]
+        payload = msg.payload
+        self.assertTrue('password_info' in payload)
+
+    def test_rebuild_instance_notification_pass_info(self):
+        old_time = datetime.datetime(2012, 4, 1)
+        cur_time = datetime.datetime(2012, 12, 21, 12, 21)
+        timeutils.set_time_override(old_time)
+        inst_ref = jsonutils.to_primitive(self._create_fake_instance())
+        self.compute.run_instance(self.context, inst_ref, {}, {}, None, None,
+                None, True, None, False)
+        timeutils.set_time_override(cur_time)
+
+        self.context.roles.append('rack_connect')
+
+        def _fake_get_password_info(*_args):
+            return [{'target': 'rack_connect', 'key_version': 123, 'value':
+            'fake_public_key'}]
+        self.stubs.Set(self.compute, '_get_password_info',
+                       _fake_get_password_info)
+
+        fake_notifier.NOTIFICATIONS = []
+        instance = db.instance_get_by_uuid(self.context, inst_ref['uuid'])
+        db.instance_system_metadata_update(self.context, inst_ref['uuid'],
+                {'image_kernel_id': 'old-data',
+                 'image_ramdisk_id': 'old_data',
+                 'image_base_image_ref': 'base_image_ref1',
+                 'instance_type_id': 1,
+                 'instance_type_name': 'm1.tiny',
+                 'instance_type_memory_mb': 10,
+                 'instance_type_vcpus': 10,
+                 'instance_type_root_gb': 10,
+                 'instance_type_ephemeral_gb': 10,
+                 'instance_type_flavorid': '1',
+                 'instance_type_swap': 10,
+                 'instance_type_rxtx_factor': 1.0,
+                 'instance_type_vcpu_weight': 1}, True)
+        orig_sys_metadata = db.instance_system_metadata_get(self.context,
+                                inst_ref['uuid'])
+        new_base_image_ref = 'base_image_ref2'
+        image_ref = instance["image_ref"]
+        new_image_ref = image_ref + '-new_image_ref'
+        db.instance_update(self.context, inst_ref['uuid'],
+                {'image_ref': new_image_ref})
+        db.instance_system_metadata_update(self.context, inst_ref['uuid'],
+                {'image_base_image_ref': new_base_image_ref}, False)
+
+        password = "new_password"
+
+        instance = db.instance_get_by_uuid(self.context, inst_ref['uuid'])
+
+        db.instance_update(self.context, instance['uuid'],
+                {"task_state": task_states.REBUILDING})
+        self.compute.rebuild_instance(self.context.elevated(),
+                jsonutils.to_primitive(instance),
+                image_ref, new_image_ref,
+                injected_files=[], new_pass=password,
+                orig_sys_metadata=orig_sys_metadata,
+                bdms=[], recreate=False, on_shared_storage=False)
+
+        instance = db.instance_get_by_uuid(self.context, inst_ref['uuid'])
+
+        image_ref_url = glance.generate_image_url(image_ref)
+        new_image_ref_url = glance.generate_image_url(new_image_ref)
+
+        self.assertEqual(len(fake_notifier.NOTIFICATIONS), 3)
+        msg = fake_notifier.NOTIFICATIONS[0]
+        self.assertEqual(msg.event_type,
+                         'compute.instance.exists')
+        self.assertEqual(msg.payload['image_ref_url'], image_ref_url)
+        msg = fake_notifier.NOTIFICATIONS[1]
+        self.assertEqual(msg.event_type,
+                         'compute.instance.rebuild.start')
+        self.assertEqual(msg.payload['image_ref_url'], new_image_ref_url)
+        self.assertEqual(msg.payload['image_name'], 'fake_name')
+        msg = fake_notifier.NOTIFICATIONS[2]
+        self.assertEqual(msg.event_type,
+                         'compute.instance.rebuild.end')
+        self.assertEqual(msg.priority, 'INFO')
+        payload = msg.payload
+        self.assertEqual(payload['image_name'], 'fake_name')
+        self.assertEqual(payload['tenant_id'], self.project_id)
+        self.assertEqual(payload['user_id'], self.user_id)
+        self.assertEqual(payload['instance_id'], inst_ref['uuid'])
+        self.assertEqual(payload['instance_type'], 'm1.tiny')
+        type_id = flavors.get_flavor_by_name('m1.tiny')['id']
+        self.assertEqual(str(payload['instance_type_id']), str(type_id))
+        self.assertTrue('display_name' in payload)
+        self.assertTrue('created_at' in payload)
+        self.assertTrue('launched_at' in payload)
+        self.assertEqual(payload['launched_at'], timeutils.strtime(cur_time))
+        self.assertEqual(payload['image_ref_url'], new_image_ref_url)
+        self.compute.terminate_instance(self.context,
+                self._objectify(instance), [], [])
+        self.assertTrue('password_info' in payload)
+        self.assertEqual(len(payload['password_info']), 1)
+        self.assertEqual('rack_connect', payload['password_info'][0]['target'])
+        self.assertEqual('fake_public_key',
+                         payload['password_info'][0]['value'])
+
     def test_finish_resize_instance_notification(self):
         # Ensure notifications on instance migrate/resize.
         old_time = datetime.datetime(2012, 4, 1)
