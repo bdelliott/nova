@@ -2954,6 +2954,15 @@ def block_device_mapping_create(context, values):
     session = get_session()
     with session.begin():
         bdm_ref.save(session=session)
+    return bdm_ref
+
+
+@require_context
+def block_device_mapping_get_by_id(context, bdm_id):
+    """Unfortunately needed for cells."""
+    return _block_device_mapping_get_query(context).\
+                 filter_by(id=bdm_id).\
+                 first()
 
 
 @require_context

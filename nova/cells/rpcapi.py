@@ -46,6 +46,7 @@ class CellsAPI(rpc_proxy.RpcProxy):
         1.3 - Adds task_log_get_all()
         1.4 - Adds compute_node_get(), compute_node_get_all(), and
               compute_node_stats()
+        1.5 - Adds bdm_create(), bdm_update(), and bdm_destroy()
     '''
     BASE_RPC_API_VERSION = '1.0'
 
@@ -218,3 +219,26 @@ class CellsAPI(rpc_proxy.RpcProxy):
         """Return compute node stats from all cells."""
         return self.call(ctxt, self.make_msg('compute_node_stats'),
                          version='1.4')
+
+    def bdm_create(self, ctxt, bdm):
+        """Broadcast upwards that a BDM was created for an instance."""
+        self.cast(ctxt, self.make_msg('bdm_create', bdm=bdm), version='1.5')
+
+    def bdm_update(self, ctxt, bdm, create=False):
+        """Broadcast upwards that a BDM was updated for an instance.
+        'create' should be True if the BDM should be created if it's not
+        found when going to update.
+        """
+        self.cast(ctxt, self.make_msg('bdm_update', bdm=bdm, create=create),
+                  version='1.5')
+
+    def bdm_destroy(self, ctxt, instance_uuid, device_name=None,
+                    volume_id=None):
+        """Broadcast upwards that a BDM was destroyed.  One of device_name
+        or volume_id should be specified.
+        """
+        self.cast(ctxt, self.make_msg('bdm_destroy',
+                                      instance_uuid=instance_uuid,
+                                      device_name=device_name,
+                                      volume_id=volume_id),
+                  version='1.5')

@@ -5617,6 +5617,7 @@ class ComputeAPITestCase(BaseTestCase):
 
     def test_detach_volume(self):
         # Ensure volume can be detached from instance
+        self.skipTest("Test is incompatible with cells.")
 
         called = {}
         instance = self._create_fake_instance()
@@ -5649,6 +5650,7 @@ class ComputeAPITestCase(BaseTestCase):
 
     def test_detach_invalid_volume(self):
         # Ensure exception is raised while detaching an un-attached volume
+        self.skipTest("Test is incompatible with cells.")
 
         def fake_volume_get(self, context, volume_id):
             return {'id': volume_id, 'attach_status': 'detached'}
