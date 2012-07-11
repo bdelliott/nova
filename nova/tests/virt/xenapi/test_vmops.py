@@ -228,6 +228,7 @@ class SpawnTestCase(VMOpsTestBase):
         self.mox.StubOutWithMock(self.vmops, 'inject_network_info')
         self.mox.StubOutWithMock(self.vmops, '_inject_hostname')
         self.mox.StubOutWithMock(self.vmops, '_inject_instance_metadata')
+        self.mox.StubOutWithMock(self.vmops, '_inject_provider_data')
         self.mox.StubOutWithMock(self.vmops, '_inject_auto_disk_config')
         self.mox.StubOutWithMock(self.vmops, '_file_inject_vm_settings')
         self.mox.StubOutWithMock(self.vmops, '_create_vifs')
@@ -329,6 +330,7 @@ class SpawnTestCase(VMOpsTestBase):
         self.vmops._update_instance_progress(context, instance, step, steps)
 
         self.vmops._inject_instance_metadata(instance, vm_ref)
+        self.vmops._inject_provider_data(context, instance, vm_ref)
         self.vmops._inject_auto_disk_config(instance, vm_ref)
         self.vmops._inject_hostname(instance, vm_ref, rescue)
         self.vmops._file_inject_vm_settings(instance, vm_ref, vdis,
@@ -439,6 +441,7 @@ class SpawnTestCase(VMOpsTestBase):
         pci_manager.get_instance_pci_devs(instance).AndReturn([])
 
         self.vmops._inject_instance_metadata(instance, vm_ref)
+        self.vmops._inject_provider_data(context, instance, vm_ref)
         self.vmops._inject_auto_disk_config(instance, vm_ref)
         self.vmops._file_inject_vm_settings(instance, vm_ref, vdis,
                                             network_info)

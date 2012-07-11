@@ -80,6 +80,22 @@ xenapi_vmops_opts = [
                 deprecated_name='image_activation_file',
                 deprecated_group='DEFAULT',
                 help=_('JSON file containing image activation configuration')),
+    cfg.StrOpt('provider',
+               default='Rackspace',
+                deprecated_name='provider',
+                deprecated_group='DEFAULT',
+               help=_('Set the provider name.  Defaults to "Rackspace".')),
+    cfg.StrOpt('region',
+               default=None,
+                deprecated_name='region',
+                deprecated_group='DEFAULT',
+               help=_('Region compute host is in')),
+    cfg.StrOpt('ip_whitelist_file',
+               default=None,
+                deprecated_name='ip_whitelist_file',
+                deprecated_group='DEFAULT',
+               help=_('File containing a list of IP addresses to whitelist '
+                      'on managed hosts')),
     ]
 
 CONF = cfg.CONF
@@ -519,6 +535,7 @@ class VMOps(object):
         @step
         def inject_instance_data_step(undo_mgr, vm_ref, vdis):
             self._inject_instance_metadata(instance, vm_ref)
+            self._inject_provider_data(context, instance, vm_ref)
             self._inject_auto_disk_config(instance, vm_ref)
             # NOTE: We add the hostname here so windows PV tools
             # can pick it up during booting
@@ -1812,6 +1829,34 @@ class VMOps(object):
             self._remove_from_param_xenstore(vm_ref, 'vm-data/hostname')
 
         update_hostname()
+
+    def _inject_provider_data(self, context, instance, vm_ref):
+        """Inject provider data for the instance into the xenstore."""
+
+        # Store region and roles
+        self._add_to_param_xenstore(vm_ref, 'vm-data/provider_data/provider',
+                                    CONF.xenserver.provider or '')
+        self._add_to_param_xenstore(vm_ref, 'vm-data/provider_data/region',
+                                    CONF.xenserver.region or '')
+        self._add_to_param_xenstore(vm_ref, 'vm-data/provider_data/roles',
+                                    jsonutils.dumps(context.roles))
+
+        # Now build up the IP whitelist data
+        location = 'vm-data/provider_data/ip_whitelist'
+        self._add_to_param_xenstore(vm_ref, location, '')
+        if CONF.xenserver.ip_whitelist_file:
+            idx = 0
+            with open(CONF.xenserver.ip_whitelist_file) as f:
+                for entry in f:
+                    entry = entry.strip()
+
+                    # Skip blank lines and comments
+                    if not entry or entry[0] == '#':
+                        continue
+
+                    self._add_to_param_xenstore(vm_ref, '%s/%s' %
+                                                (location, idx), entry)
+                    idx += 1
 
     def _write_to_xenstore(self, instance, path, value, vm_ref=None):
         """Writes the passed value to the xenstore record for the given VM
