@@ -24,12 +24,21 @@ def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    t = Table('fixed_ips', meta, autoload=True)
+    t = Table('certificates', meta, autoload=True)
 
-    # Based on fixed_ip_delete_associate
+    # Based on certificate_get_all_by_project
     # from: nova/db/sqlalchemy/api.py
-    i = Index('fixed_ips_deleted_allocated_idx',
-              t.c.address, t.c.deleted, t.c.allocated)
+    i = Index('certificates_project_id_deleted_idx',
+              t.c.project_id, t.c.deleted)
+    try:
+        i.create(migrate_engine)
+    except IntegrityError:
+        pass
+
+    # Based on certificate_get_all_by_user
+    # from: nova/db/sqlalchemy/api.py
+    i = Index('certificates_user_id_deleted_idx',
+              t.c.user_id, t.c.deleted)
     try:
         i.create(migrate_engine)
     except IntegrityError:
@@ -41,8 +50,12 @@ def downgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    t = Table('fixed_ips', meta, autoload=True)
+    t = Table('certificates', meta, autoload=True)
 
-    i = Index('fixed_ips_deleted_allocated_idx',
-              t.c.address, t.c.deleted, t.c.allocated)
+    i = Index('certificates_project_id_deleted_idx',
+              t.c.project_id, t.c.deleted)
+    i.drop(migrate_engine)
+
+    i = Index('certificates_user_id_deleted_idx',
+              t.c.user_id, t.c.deleted)
     i.drop(migrate_engine)

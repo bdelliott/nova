@@ -24,12 +24,20 @@ def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    t = Table('fixed_ips', meta, autoload=True)
+    t = Table('iscsi_targets', meta, autoload=True)
 
-    # Based on fixed_ip_delete_associate
+    # Based on iscsi_target_count_by_host
     # from: nova/db/sqlalchemy/api.py
-    i = Index('fixed_ips_deleted_allocated_idx',
-              t.c.address, t.c.deleted, t.c.allocated)
+    i = Index('iscsi_targets_host_idx', t.c.host)
+    try:
+        i.create(migrate_engine)
+    except IntegrityError:
+        pass
+
+    # Based on volume_allocate_iscsi_target
+    # from: nova/db/sqlalchemy/api.py
+    i = Index('iscsi_targets_host_volume_id_deleted_idx',
+              t.c.host, t.c.volume_id, t.c.deleted)
     try:
         i.create(migrate_engine)
     except IntegrityError:
@@ -41,8 +49,11 @@ def downgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    t = Table('fixed_ips', meta, autoload=True)
+    t = Table('iscsi_targets', meta, autoload=True)
 
-    i = Index('fixed_ips_deleted_allocated_idx',
-              t.c.address, t.c.deleted, t.c.allocated)
+    i = Index('iscsi_targets_host_idx', t.c.host)
+    i.drop(migrate_engine)
+
+    i = Index('iscsi_targets_host_volume_id_deleted_idx',
+              t.c.host, t.c.volume_id, t.c.deleted)
     i.drop(migrate_engine)

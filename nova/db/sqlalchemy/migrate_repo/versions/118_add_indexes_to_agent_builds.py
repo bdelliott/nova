@@ -24,12 +24,11 @@ def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    t = Table('fixed_ips', meta, autoload=True)
-
-    # Based on fixed_ip_delete_associate
+    # Based on agent_build_get_by_triple
     # from: nova/db/sqlalchemy/api.py
-    i = Index('fixed_ips_deleted_allocated_idx',
-              t.c.address, t.c.deleted, t.c.allocated)
+    t = Table('agent_builds', meta, autoload=True)
+    i = Index('agent_builds_hypervisor_os_arch_idx',
+              t.c.hypervisor, t.c.os, t.c.architecture)
     try:
         i.create(migrate_engine)
     except IntegrityError:
@@ -41,8 +40,7 @@ def downgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    t = Table('fixed_ips', meta, autoload=True)
-
-    i = Index('fixed_ips_deleted_allocated_idx',
-              t.c.address, t.c.deleted, t.c.allocated)
+    t = Table('agent_builds', meta, autoload=True)
+    i = Index('agent_builds_hypervisor_os_arch_idx',
+              t.c.hypervisor, t.c.os, t.c.architecture)
     i.drop(migrate_engine)

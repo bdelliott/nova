@@ -24,12 +24,28 @@ def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    t = Table('fixed_ips', meta, autoload=True)
+    t = Table('floating_ips', meta, autoload=True)
 
-    # Based on fixed_ip_delete_associate
+    # Based on floating_ip_get_all_by_host
     # from: nova/db/sqlalchemy/api.py
-    i = Index('fixed_ips_deleted_allocated_idx',
-              t.c.address, t.c.deleted, t.c.allocated)
+    i = Index('floating_ips_host_idx', t.c.host)
+    try:
+        i.create(migrate_engine)
+    except IntegrityError:
+        pass
+
+    # Based on floating_ip_get_all_by_project
+    # from: nova/db/sqlalchemy/api.py
+    i = Index('floating_ips_project_id_idx', t.c.project_id)
+    try:
+        i.create(migrate_engine)
+    except IntegrityError:
+        pass
+
+    # Based on floating_ip_allocate_address
+    # from: nova/db/sqlalchemy/api.py
+    i = Index('floating_ips_pool_deleted_fixed_ip_id_project_id_idx',
+              t.c.pool, t.c.deleted, t.c.fixed_ip_id, t.c.project_id)
     try:
         i.create(migrate_engine)
     except IntegrityError:
@@ -41,8 +57,14 @@ def downgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    t = Table('fixed_ips', meta, autoload=True)
+    t = Table('floating_ips', meta, autoload=True)
 
-    i = Index('fixed_ips_deleted_allocated_idx',
-              t.c.address, t.c.deleted, t.c.allocated)
+    i = Index('floating_ips_host_idx', t.c.host)
+    i.drop(migrate_engine)
+
+    i = Index('floating_ips_project_id_idx', t.c.project_id)
+    i.drop(migrate_engine)
+
+    i = Index('floating_ips_pool_deleted_fixed_ip_id_project_id_idx',
+              t.c.pool, t.c.deleted, t.c.fixed_ip_id, t.c.project_id)
     i.drop(migrate_engine)

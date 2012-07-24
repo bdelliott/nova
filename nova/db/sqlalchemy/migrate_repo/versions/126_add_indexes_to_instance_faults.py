@@ -24,12 +24,11 @@ def upgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    t = Table('fixed_ips', meta, autoload=True)
-
-    # Based on fixed_ip_delete_associate
+    # Based on instance_fault_get_by_instance_uuids
     # from: nova/db/sqlalchemy/api.py
-    i = Index('fixed_ips_deleted_allocated_idx',
-              t.c.address, t.c.deleted, t.c.allocated)
+    t = Table('instance_faults', meta, autoload=True)
+    i = Index('instance_faults_instance_uuid_deleted_created_at_idx',
+              t.c.instance_uuid, t.c.deleted, t.c.created_at)
     try:
         i.create(migrate_engine)
     except IntegrityError:
@@ -41,8 +40,7 @@ def downgrade(migrate_engine):
     meta = MetaData()
     meta.bind = migrate_engine
 
-    t = Table('fixed_ips', meta, autoload=True)
-
-    i = Index('fixed_ips_deleted_allocated_idx',
-              t.c.address, t.c.deleted, t.c.allocated)
+    t = Table('instance_faults', meta, autoload=True)
+    i = Index('instance_faults_instance_uuid_deleted_created_at_idx',
+              t.c.instance_uuid, t.c.deleted, t.c.created_at)
     i.drop(migrate_engine)
