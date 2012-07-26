@@ -25,7 +25,8 @@ CONF = cfg.CONF
 
 class GlanceStore(object):
 
-    def upload_image(self, context, session, instance, vdi_uuids, image_id):
+    def upload_image(self, context, session, instance, vdi_uuids, image_id,
+                     max_size=0):
         """Requests that the Glance plugin bundle the specified VDIs and
         push them into Glance using the specified human-friendly name.
         """
@@ -50,6 +51,7 @@ class GlanceStore(object):
                   'sr_path': vm_utils.get_sr_path(session),
                   'auth_token': getattr(context, 'auth_token', None),
                   'project_id': context.project_id,
+                  'max_size': max_size,
                   'properties': properties}
 
         session.call_plugin_serialized('glance', 'upload_vhd', **params)
