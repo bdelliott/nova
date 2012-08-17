@@ -45,6 +45,10 @@ server_opts = [
                 default=True,
                 help='Allows use of instance password during '
                      'server creation'),
+    cfg.BoolOpt('enable_requested_networks',
+                default=True,
+                help='Enable requested_networks regardless of os-networks '
+                     'extension'),
 ]
 CONF = cfg.CONF
 CONF.register_opts(server_opts)
@@ -782,7 +786,8 @@ class Controller(wsgi.Controller):
         sg_names = list(set(sg_names))
 
         requested_networks = None
-        if self.ext_mgr.is_loaded('os-networks'):
+        if (self.ext_mgr.is_loaded('os-networks') or
+            CONF.enable_requested_networks):
             requested_networks = server_dict.get('networks')
 
         if requested_networks is not None:
