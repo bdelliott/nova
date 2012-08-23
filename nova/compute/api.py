@@ -123,6 +123,7 @@ CONF.register_opts(compute_opts)
 CONF.import_opt('compute_topic', 'nova.compute.rpcapi')
 CONF.import_opt('enable', 'nova.cells.opts', group='cells')
 CONF.import_opt('default_ephemeral_format', 'nova.virt.driver')
+CONF.import_opt('glance_api_servers', 'nova.config')
 
 MAX_USERDATA_SIZE = 65535
 QUOTAS = quota.QUOTAS
@@ -2341,6 +2342,8 @@ class API(base.Base):
         # With cells, the best we can do right now is commit the
         # reservations immediately...
         quotas.commit(context)
+        # specify glance api servers to use downstream in child cells:
+        context.glance_api_servers = CONF.glance_api_servers
         # NOTE(johannes/comstud): The API cell needs a local migration
         # record for later resize_confirm and resize_reverts to deal
         # with quotas.  We don't need source and/or destination
