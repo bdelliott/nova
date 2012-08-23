@@ -25,9 +25,13 @@ from nova.compute import instance_types
 from nova.compute import rpcapi as compute_rpcapi
 from nova.compute import vm_states
 from nova import exception
+from nova.openstack.common import cfg
 from nova.openstack.common import excutils
 from nova.openstack.common import log as logging
 
+
+CONF = cfg.CONF
+CONF.import_opt('glance_api_servers', 'nova.config')
 LOG = logging.getLogger(__name__)
 
 
@@ -327,6 +331,9 @@ class ComputeCellsAPI(compute_api.API):
         the original flavor_id. If flavor_id is not None, the instance should
         be migrated to a new host and resized to the new flavor_id.
         """
+        # specify glance api servers to use downstream in child cells:
+        context.glance_api_servers = CONF.glance_api_servers
+
         super(ComputeCellsAPI, self).resize(context, instance, *args, **kwargs)
 
         # NOTE(johannes): If we get to this point, then we know the
