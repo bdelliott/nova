@@ -20,6 +20,7 @@ from oslo import messaging
 
 from nova import availability_zones
 from nova import block_device
+from nova.cells import cfg as cells_config
 from nova.cells import rpcapi as cells_rpcapi
 from nova.cells import utils as cells_utils
 from nova.compute import api as compute_api
@@ -168,6 +169,23 @@ class ComputeCellsAPI(compute_api.API):
         # Redirect conductor build_instances to cells
         self._compute_task_api = ConductorTaskRPCAPIRedirect(self.cells_rpcapi)
         self._cell_type = 'api'
+        self._cells_config = cells_config.CellsConfig()
+
+    def _cell_read_only(self, cell_name, context=None):
+        """Is the target cell in a read-only mode?"""
+        return self._cells_config.cell_read_only(cell_name, context)
+
+    def _validate_cell(self, instance, method):
+        cell_name = instance['cell_name']
+        if not cell_name:
+            raise exception.InstanceUnknownCell(
+                    instance_uuid=instance['uuid'])
+        if self._cell_read_only(cell_name):
+            raise exception.InstanceInvalidState(
+                    attr="vm_state",
+                    instance_uuid=instance['uuid'],
+                    state="temporary_readonly",
+                    method=method)
 
     def _cast_to_cells(self, context, instance, method, *args, **kwargs):
         instance_uuid = instance['uuid']

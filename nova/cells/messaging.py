@@ -76,14 +76,14 @@ LOG = logging.getLogger(__name__)
 
 # Separator used between cell names for the 'full cell name' and routing
 # path.
-_PATH_CELL_SEP = cells_utils.PATH_CELL_SEP
+PATH_CELL_SEP = cells_utils.PATH_CELL_SEP
 
 
 def _reverse_path(path):
     """Reverse a path.  Used for sending responses upstream."""
-    path_parts = path.split(_PATH_CELL_SEP)
+    path_parts = path.split(PATH_CELL_SEP)
     path_parts.reverse()
-    return _PATH_CELL_SEP.join(path_parts)
+    return PATH_CELL_SEP.join(path_parts)
 
 
 def _response_cell_name_from_path(routing_path, neighbor_only=False):
@@ -93,7 +93,7 @@ def _response_cell_name_from_path(routing_path, neighbor_only=False):
     path = _reverse_path(routing_path)
     if not neighbor_only or len(path) == 1:
         return path
-    return _PATH_CELL_SEP.join(path.split(_PATH_CELL_SEP)[:2])
+    return PATH_CELL_SEP.join(path.split(PATH_CELL_SEP)[:2])
 
 
 #
@@ -114,7 +114,7 @@ class _BaseMessage(object):
 
     routing_path is updated on every hop through a cell.  The current
     cell name is appended to it (cells are separated by
-    _PATH_CELL_SEP ('!')).  This is used to tell if we've reached the
+    PATH_CELL_SEP ('!')).  This is used to tell if we've reached the
     target cell and also to determine the source of a message for
     responses by reversing it.
 
@@ -184,7 +184,7 @@ class _BaseMessage(object):
     def _append_hop(self):
         """Add our hop to the routing_path."""
         routing_path = (self.routing_path and
-                self.routing_path + _PATH_CELL_SEP or '')
+                self.routing_path + PATH_CELL_SEP or '')
         self.routing_path = routing_path + self.our_path_part
         self.hop_count += 1
 
@@ -344,7 +344,7 @@ class _TargetedMessage(_BaseMessage):
                 target_cell = self.our_path_part
             else:
                 target_cell = '%s%s%s' % (self.our_path_part,
-                                          _PATH_CELL_SEP,
+                                          PATH_CELL_SEP,
                                           target_cell.name)
         self.target_cell = target_cell
         self.base_attrs_to_json.append('target_cell')
@@ -357,17 +357,17 @@ class _TargetedMessage(_BaseMessage):
             return self.state_manager.my_cell_state
         target_cell = self.target_cell
         routing_path = self.routing_path
-        current_hops = routing_path.count(_PATH_CELL_SEP)
+        current_hops = routing_path.count(PATH_CELL_SEP)
         next_hop_num = current_hops + 1
-        dest_hops = target_cell.count(_PATH_CELL_SEP)
+        dest_hops = target_cell.count(PATH_CELL_SEP)
         if dest_hops < current_hops:
             reason_args = {'target_cell': target_cell,
                            'routing_path': routing_path}
             reason = _("destination is %(target_cell)s but routing_path "
                        "is %(routing_path)s") % reason_args
             raise exception.CellRoutingInconsistency(reason=reason)
-        dest_name_parts = target_cell.split(_PATH_CELL_SEP)
-        if (_PATH_CELL_SEP.join(dest_name_parts[:next_hop_num]) !=
+        dest_name_parts = target_cell.split(PATH_CELL_SEP)
+        if (PATH_CELL_SEP.join(dest_name_parts[:next_hop_num]) !=
                 routing_path):
             reason_args = {'target_cell': target_cell,
                            'routing_path': routing_path}
@@ -592,8 +592,8 @@ class _ResponseMessage(_TargetedMessage):
         if self.fanout is False:
             # Really there's 1 more hop on each of these below, but
             # it doesn't matter for this logic.
-            target_hops = self.target_cell.count(_PATH_CELL_SEP)
-            current_hops = self.routing_path.count(_PATH_CELL_SEP)
+            target_hops = self.target_cell.count(PATH_CELL_SEP)
+            current_hops = self.routing_path.count(PATH_CELL_SEP)
             if current_hops + 1 == target_hops:
                 # Next hop is the target.. so we must fanout.  See
                 # DocString above.
