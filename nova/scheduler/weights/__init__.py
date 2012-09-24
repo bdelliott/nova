@@ -47,6 +47,27 @@ class HostWeightHandler(weights.BaseWeightHandler):
         super(HostWeightHandler, self).__init__(BaseHostWeigher)
 
 
+class RAXHostWeightHandler(weights.BaseWeightHandler):
+    object_class = WeighedHost
+
+    def get_weighed_objects(self, weigher_classes, obj_list,
+            weighing_properties):
+        """Return a sorted (highest score first) list of WeighedObjects."""
+
+        if not obj_list:
+            return []
+
+        weighed_objs = [self.object_class(obj, 0.0) for obj in obj_list]
+        for weigher_cls in weigher_classes:
+            weigher = weigher_cls()
+            weigher.weigh_objects(weighed_objs, weighing_properties)
+
+        return sorted(weighed_objs, key=lambda x: x.weight, reverse=True)
+
+    def __init__(self):
+        super(RAXHostWeightHandler, self).__init__(BaseHostWeigher)
+
+
 def all_weighers():
     """Return a list of weight plugin classes found in this directory."""
-    return HostWeightHandler().get_all_classes()
+    return RAXHostWeightHandler().get_all_classes()
