@@ -321,6 +321,9 @@ class HostManager(object):
                     '%(forced_hosts_str)s')
             LOG.debug(msg, locals())
 
+        hosts = list(hosts)
+        num_hosts = len(hosts)
+        filter_properties['total_hosts'] = num_hosts
         filter_classes = self._choose_host_filters(filter_class_names)
         ignore_hosts = filter_properties.get('ignore_hosts', [])
         force_hosts = filter_properties.get('force_hosts', [])
