@@ -888,7 +888,7 @@ class _ComputeAPIUnitTestMixIn(object):
 
         self.context.elevated().AndReturn(self.context)
         migration_obj.Migration.get_by_instance_and_status(
-                self.context, fake_inst['uuid'], 'finished').AndReturn(
+            self.context, fake_inst['uuid'], ['finished', 'error']).AndReturn(
                         fake_mig)
         self.compute_api._reverse_upsize_quota_delta(
                 self.context, fake_mig).AndReturn('deltas')
@@ -945,7 +945,8 @@ class _ComputeAPIUnitTestMixIn(object):
 
         self.context.elevated().AndReturn(self.context)
         migration_obj.Migration.get_by_instance_and_status(
-            self.context, fake_inst['uuid'], 'finished').AndReturn(fake_mig)
+            self.context, fake_inst['uuid'], ['finished', 'error'])\
+            .AndReturn(fake_mig)
 
         delta = ['delta']
         self.compute_api._reverse_upsize_quota_delta(

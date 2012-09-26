@@ -418,6 +418,45 @@ def aggregate_object_compat(function):
     return decorated_function
 
 
+def wrap_migration_error(function):
+    """Wrap a migration function, setting migration to 'error' if exception."""
+
+    @functools.wraps(function)
+    def decorated_function(self, context, *args, **kwargs):
+        try:
+            function(self, context, *args, **kwargs)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                # Long function name is long
+                get_migration = self.db.migration_get_by_instance_and_status
+                instance = kwargs.get('instance')
+
+                elevated = context.elevated()
+
+                migration = kwargs.get('migration')
+                if not migration:
+                    # Possibly RPC message with migration_id instead of dict
+                    migration_id = kwargs.get('migration_id')
+                    if migration_id:
+                        migration = self.db.migration_get(elevated,
+                                                          migration_id)
+
+                if not migration and instance:
+                    # Possibly a failure in pre_migrate
+                    try:
+                        migration = get_migration(elevated,
+                                                  instance['uuid'],
+                                                  'pre-migrating')
+                    except exception.MigrationNotFoundByStatus:
+                        pass
+
+                if migration:
+                    self.db.migration_update(elevated, migration['id'],
+                                             {'status': 'error'})
+
+    return decorated_function
+
+
 class InstanceEvents(object):
     def __init__(self):
         self._events = {}
@@ -3236,7 +3275,10 @@ class ComputeManager(manager.Manager):
             migration.status = 'reverted'
             migration.save(context.elevated())
 
-            rt = self._get_resource_tracker(instance.node)
+            # NOTE(alaski): Grab the destination from the migration since the
+            # instance may not be updated to know it's here.
+            current_node = migration.dest_node
+            rt = self._get_resource_tracker(current_node)
             rt.drop_resize_claim(instance)
 
             self.compute_rpcapi.finish_revert_resize(context, instance,
@@ -3358,8 +3400,8 @@ class ComputeManager(manager.Manager):
                     instance_type, quotas.reservations)
 
     @wrap_exception()
-    @reverts_task_state
     @wrap_instance_event
+    @wrap_migration_error
     @wrap_instance_fault
     def prep_resize(self, context, image, instance, instance_type,
                     reservations, request_spec, filter_properties, node):
@@ -3449,9 +3491,9 @@ class ComputeManager(manager.Manager):
             raise exc_info[0], exc_info[1], exc_info[2]
 
     @wrap_exception()
-    @reverts_task_state
     @wrap_instance_event
     @errors_out_migration
+    @wrap_migration_error
     @wrap_instance_fault
     def resize_instance(self, context, instance, image,
                         reservations, migration, instance_type):
@@ -3590,9 +3632,9 @@ class ComputeManager(manager.Manager):
             network_info=network_info)
 
     @wrap_exception()
-    @reverts_task_state
     @wrap_instance_event
     @errors_out_migration
+    @wrap_migration_error
     @wrap_instance_fault
     def finish_resize(self, context, disk_info, image, instance,
                       reservations, migration):

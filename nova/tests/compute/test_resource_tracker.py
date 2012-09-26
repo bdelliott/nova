@@ -997,7 +997,7 @@ class ResizeClaimTestCase(BaseTrackerTestCase):
 
         states = [task_states.RESIZE_PREP, task_states.RESIZE_MIGRATING,
                   task_states.RESIZE_MIGRATED, task_states.RESIZE_FINISH]
-        for vm_state in [vm_states.ACTIVE, vm_states.STOPPED]:
+        for vm_state in [vm_states.ACTIVE, vm_states.STOPPED, vm_states.ERROR]:
             for task_state in states:
                 instance = self._fake_instance(vm_state=vm_state,
                                                task_state=task_state)

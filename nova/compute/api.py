@@ -2199,12 +2199,34 @@ class API(base.Base):
     @wrap_check_policy
     @check_instance_lock
     @check_instance_cell
-    @check_instance_state(vm_state=[vm_states.RESIZED])
     def revert_resize(self, context, instance):
         """Reverts a resize, deleting the 'new' instance in the process."""
+        if instance.vm_state not in [vm_states.RESIZED, vm_states.ERROR]:
+            raise exception.InstanceInvalidState(
+                attr='vm_state',
+                instance_uuid=instance.uuid,
+                state=instance.vm_state,
+                method='revert_resize')
+
+        # HACK(johannes): As a temporary workaround until we have better
+        # management of soft-failures, we allow reverts from certain states:
+        # 1) vm_state == RESIZED and task_state == None
+        # 2) vm_state == ERROR and task_state == [resizing tasks]
+        if (instance.vm_state == vm_states.RESIZED and
+            instance.task_state is not None) or \
+           (instance.vm_state == vm_states.ERROR and
+            instance.task_state not in [task_states.RESIZE_PREP,
+                                        task_states.RESIZE_MIGRATING,
+                                        task_states.RESIZE_MIGRATED,
+                                        task_states.RESIZE_FINISH]):
+            raise exception.InstanceInvalidState(
+                attr='task_state',
+                instance_uuid=instance.uuid,
+                state=instance.task_state,
+                method='revert_resize')
         elevated = context.elevated()
         migration = migration_obj.Migration.get_by_instance_and_status(
-            elevated, instance.uuid, 'finished')
+            elevated, instance.uuid, ['finished', 'error'])
 
         # reverse quota reservation for increased resource usage
         deltas = self._reverse_upsize_quota_delta(context, migration)

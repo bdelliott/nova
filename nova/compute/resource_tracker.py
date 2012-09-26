@@ -671,7 +671,7 @@ class ResourceTracker(object):
         if vm == vm_states.RESIZED:
             return True
 
-        if (vm in [vm_states.ACTIVE, vm_states.STOPPED]
+        if (vm in [vm_states.ACTIVE, vm_states.STOPPED, vm_states.ERROR]
                 and task in [task_states.RESIZE_PREP,
                 task_states.RESIZE_MIGRATING, task_states.RESIZE_MIGRATED,
                 task_states.RESIZE_FINISH]):

@@ -2111,6 +2111,7 @@ class ComputeManagerMigrationTestCase(test.NoDBTestCase):
                 expected_attrs=['metadata', 'system_metadata', 'info_cache'])
         self.migration = migration_obj.Migration()
         self.migration.status = 'migrating'
+        self.migration.id = 0
 
     def test_finish_resize_failure(self):
         elevated_context = self.context.elevated()
@@ -2125,9 +2126,10 @@ class ComputeManagerMigrationTestCase(test.NoDBTestCase):
             mock.patch.object(self.compute, '_instance_update'),
             mock.patch.object(self.migration, 'save'),
             mock.patch.object(self.context, 'elevated',
-                              return_value=elevated_context)
+                              return_value=elevated_context),
+            mock.patch.object(self.compute.db, 'migration_update')
         ) as (meth, event_start, event_finish, fault_create, instance_update,
-              migration_save, context_elevated):
+              migration_save, context_elevated, db_migration_update):
             fault_create.return_value = (
                 test_instance_fault.fake_faults['fake-uuid'][0])
             self.assertRaises(
@@ -2164,10 +2166,11 @@ class ComputeManagerMigrationTestCase(test.NoDBTestCase):
                               return_value=None),
             mock.patch.object(objects.BlockDeviceMappingList,
                               'get_by_instance_uuid',
-                              return_value=None)
+                              return_value=None),
+            mock.patch.object(self.compute.db, 'migration_update')
         ) as (meth, event_start, event_finish, fault_create, instance_update,
               migration_save, context_elevated, nw_info, save_inst, notify,
-              vol_block_info, bdm):
+              vol_block_info, bdm, db_migration_update):
             fault_create.return_value = (
                 test_instance_fault.fake_faults['fake-uuid'][0])
             self.assertRaises(
