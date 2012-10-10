@@ -317,7 +317,8 @@ class ConductorAPI(object):
 
     def notify_usage_exists(self, context, instance, current_period=False,
                             ignore_missing_network_data=True,
-                            system_metadata=None, extra_usage_info=None):
+                            system_metadata=None, extra_usage_info=None,
+                            include_bandwidth=False):
         instance_p = jsonutils.to_primitive(instance)
         system_metadata_p = jsonutils.to_primitive(system_metadata)
         extra_usage_info_p = jsonutils.to_primitive(extra_usage_info)
@@ -328,7 +329,8 @@ class ConductorAPI(object):
             current_period=current_period,
             ignore_missing_network_data=ignore_missing_network_data,
             system_metadata=system_metadata_p,
-            extra_usage_info=extra_usage_info_p)
+            extra_usage_info=extra_usage_info_p,
+            include_bandwidth=include_bandwidth)
 
     def security_groups_trigger_handler(self, context, event, args):
         args_p = jsonutils.to_primitive(args)

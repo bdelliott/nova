@@ -327,7 +327,7 @@ class _BaseTestCase(object):
         info = {
             'audit_period_beginning': 'start',
             'audit_period_ending': 'end',
-            'bandwidth': 'bw_usage',
+            'bandwidth': {},
             'image_meta': {},
             'extra': 'info',
             }
@@ -336,12 +336,9 @@ class _BaseTestCase(object):
             }
 
         self.mox.StubOutWithMock(notifications, 'audit_period_bounds')
-        self.mox.StubOutWithMock(notifications, 'bandwidth_usage')
         self.mox.StubOutWithMock(compute_utils, 'notify_about_instance_usage')
 
         notifications.audit_period_bounds(False).AndReturn(('start', 'end'))
-        notifications.bandwidth_usage(instance, 'start', True).AndReturn(
-            'bw_usage')
         notifier = self.conductor_manager.notifier
         compute_utils.notify_about_instance_usage(notifier,
                                                   self.context, instance,
@@ -2092,7 +2089,7 @@ class ConductorV2ManagerProxyTestCase(test.NoDBTestCase):
             ('task_log_get', 5),
             ('task_log_begin_task', 6),
             ('task_log_end_task', 6),
-            ('notify_usage_exists', 5),
+            ('notify_usage_exists', 6),
             ('security_groups_trigger_handler', 2),
             ('security_groups_trigger_members_refresh', 1),
             ('network_migrate_instance_start', 2),
