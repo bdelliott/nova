@@ -182,6 +182,10 @@ def _validate_footer_timestamp(vdi_path):
     first_line = out.splitlines()[0].strip()
 
     if 'primary footer invalid' in first_line:
+        #NOTE(alaski) seeing some issues where this check is failing but
+        # timestamps seem ok according to logs.  Let's temporarily log
+        # more info to see what's going on.
+        logging.error("Primary footer invalid: %(out)s" % locals())
         raise Exception("VDI '%(vdi_path)s' has timestamp in the future,"
                         " ensure source and destination host machines have"
                         " time set correctly" % locals())
