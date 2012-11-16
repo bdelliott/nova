@@ -1755,6 +1755,10 @@ class API(base.Base):
                 state=instance['vm_state'],
                 method='revert_resize')
 
+        # HACK(johannes): As a temporary workaround until we have better
+        # management of soft-failures, we allow reverts from certain states:
+        # 1) vm_state == RESIZED and task_state == None
+        # 2) vm_state == ERROR and task_state == [resizing tasks]
         if (instance['vm_state'] == vm_states.RESIZED and
             instance['task_state'] is not None) or \
            (instance['vm_state'] == vm_states.ERROR and
