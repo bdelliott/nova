@@ -195,6 +195,9 @@
   <extension alias="os-security-groups" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/securitygroups/api/v1.1" name="SecurityGroups">
     <description>%(text)s</description>
   </extension>
+  <extension alias="os-server-uuid" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/server_uuid/api/v1.1" name="ServerUUID">
+    <description>%(text)s</description>
+  </extension>
   <extension alias="os-server-diagnostics" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/server-diagnostics/api/v1.1" name="ServerDiagnostics">
     <description>%(text)s</description>
   </extension>

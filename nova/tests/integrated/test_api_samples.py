@@ -139,6 +139,7 @@ class ApiSamplesTrap(ApiSampleTestBaseV2):
         do_not_approve_additions.append('os-create-server-ext')
         do_not_approve_additions.append('os-networksv2')
         do_not_approve_additions.append('os-virtual-interfacesv2')
+        do_not_approve_additions.append('os-server-uuid')
 
         tests = self._get_extensions_tested()
         extensions = self._get_extensions()

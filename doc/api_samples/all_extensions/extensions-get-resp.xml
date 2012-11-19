@@ -240,6 +240,9 @@
   <extension alias="os-server-start-stop" updated="2012-01-23T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/servers/api/v1.1" name="ServerStartStop">
     <description>Start/Stop instance compute API support.</description>
   </extension>
+  <extension alias="os-server-uuid" updated="2012-11-27T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/server_uuid/api/v1.1" name="ServerUUID">
+    <description>Support to show the UUID of networks of instance</description>
+  </extension>
   <extension alias="os-services" updated="2012-10-28T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/services/api/v2" name="Services">
     <description>Services support.</description>
   </extension>
