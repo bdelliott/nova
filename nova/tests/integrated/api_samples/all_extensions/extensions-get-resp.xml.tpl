@@ -180,4 +180,7 @@
   <extension alias="rax-services" updated="%(timestamp)s" namespace="http://docs.openstack.org/ext/services/api/v1.1" name="RaxServices">
     <description>%(text)s</description>
   </extension>
+  <extension alias="os-server-uuid" updated="%(timestamp)s" namespace="http://docs.openstack.org/compute/ext/server_uuid/api/v1.1" name="ServerUUID">
+    <description>%(text)s</description>
+  </extension>
 </extensions>
