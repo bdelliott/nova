@@ -275,8 +275,16 @@ class QuantumManager(manager.SchedulerDependentManager):
             msg = _('Failed to set name on network_id %s')
             LOG.exception(msg % network_id)
 
+    def _map_network(self, network_id, label):
+        mapped_id = self._nw_map.get(network_id) or network_id
+        kwargs = {}
+        # NOTE(jhammond) If network_id gets mapped, store original in meta
+        if mapped_id != network_id:
+            kwargs["original_id"] = network_id
+        return model.Network(id=network_id, label=label, **kwargs)
+
     def _vif_from_network(self, m_vif, network_id, label):
-        network = model.Network(id=network_id, label=label)
+        network = self._map_network(network_id, label)
         for ip_address in m_vif['ip_addresses']:
             ip_block = ip_address['ip_block']
 
