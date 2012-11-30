@@ -1910,7 +1910,7 @@ class ComputeManager(manager.SchedulerDependentManager):
 
             self._terminate_volume_connections(context, instance)
 
-            rt = self._get_resource_tracker(instance.get('node'))
+            rt = self._get_resource_tracker(migration['dest_node'])
             rt.revert_resize(context, migration, status='reverted_dest')
 
             self.compute_rpcapi.finish_revert_resize(context, instance,
@@ -1979,7 +1979,7 @@ class ComputeManager(manager.SchedulerDependentManager):
             instance = self._instance_update(context, instance['uuid'],
                     vm_state=vm_states.ACTIVE, task_state=None)
 
-            rt = self._get_resource_tracker(instance.get('node'))
+            rt = self._get_resource_tracker(migration['source_node'])
             rt.revert_resize(context, migration)
 
             self._notify_about_instance_usage(
