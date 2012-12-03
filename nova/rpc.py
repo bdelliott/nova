@@ -32,6 +32,7 @@ from oslo import messaging
 import nova.context
 import nova.exception
 from nova.openstack.common import jsonutils
+from nova.openstack.common import timeutils
 
 CONF = cfg.CONF
 TRANSPORT = None
@@ -61,7 +62,8 @@ def init(conf):
     TRANSPORT = messaging.get_transport(conf,
                                         allowed_remote_exmods=exmods,
                                         aliases=TRANSPORT_ALIASES)
-    serializer = RequestContextSerializer(JsonPayloadSerializer())
+    serializer = RequestContextSerializer(
+                    DateTimeSerializer(JsonPayloadSerializer()))
     NOTIFIER = messaging.Notifier(TRANSPORT, serializer=serializer)
 
 
@@ -145,3 +147,49 @@ def get_notifier(service=None, host=None, publisher_id=None):
     if not publisher_id:
         publisher_id = "%s.%s" % (service, host or CONF.host)
     return NOTIFIER.prepare(publisher_id=publisher_id)
+
+
+class DateTimeSerializer(messaging.Serializer):
+    """A serializer that adjusts datetime format
+    based on RAX requirements.
+    """
+
+    def __init__(self, base=None):
+        self._base = base
+
+    def serialize_entity(self, ctxt, entity):
+        if self._base:
+            entity = self._base.serialize_entity(ctxt, entity)
+
+        date_keys = (
+            "created_at",
+            "launched_at",
+            "deleted_at",
+            "updated_at",
+            "scheduled_at",
+            "terminated_at",
+            "audit_period_beginning",
+            "audit_period_ending",
+        )
+
+        for key in date_keys:
+            if key in entity and entity[key]:
+                date_obj = timeutils.parse_isotime(str(entity[key]))
+                new_time = timeutils.isotime(at=date_obj).replace("Z", "")
+                new_time = new_time.replace("T", " ")
+                new_time = new_time.replace("+00:00", "")
+                entity[key] = new_time
+
+        return entity
+
+    def deserialize_entity(self, ctxt, entity):
+        if self._base:
+            entity = self._base.deserialize_entity(ctxt, entity)
+
+        return entity
+
+    def serialize_context(self, ctxt):
+        return ctxt.to_dict()
+
+    def deserialize_context(self, ctxt):
+        return nova.context.RequestContext.from_dict(ctxt)
