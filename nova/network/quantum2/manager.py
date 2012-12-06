@@ -281,7 +281,7 @@ class QuantumManager(manager.SchedulerDependentManager):
         # NOTE(jhammond) If network_id gets mapped, store original in meta
         if mapped_id != network_id:
             kwargs["original_id"] = network_id
-        return model.Network(id=network_id, label=label, **kwargs)
+        return model.Network(id=mapped_id, label=label, **kwargs)
 
     def _vif_from_network(self, m_vif, network_id, label):
         network = self._map_network(network_id, label)
