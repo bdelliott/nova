@@ -384,6 +384,14 @@ class ApiSamplesTrap(ApiSampleTestBase):
         do_not_approve_additions.append('os-networks')
         do_not_approve_additions.append('os-services')
         do_not_approve_additions.append('os-volumes')
+        # FIXME(johannes): These are Rackspace additions that don't have
+        # tests yet. Same thing applies to these as above.
+        do_not_approve_additions.append('os-networksv2')
+        do_not_approve_additions.append('os-server-uuid')
+        do_not_approve_additions.append('os-virtual-interfacesv2')
+        do_not_approve_additions.append('rax-backup-schedule')
+        do_not_approve_additions.append('rax-bandwidth')
+        do_not_approve_additions.append('rax-services')
 
         tests = self._get_extensions_tested()
         extensions = self._get_extensions()
