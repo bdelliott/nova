@@ -750,6 +750,20 @@ class ComputeManager(manager.SchedulerDependentManager):
                         context, admin_password)
                 extra_usage_info['password_info'] = password_info
 
+            # ---- start of temporary block ----
+            # TODO(matiu): Remove this block - it is temporary to help
+            # solve D-09359
+            if admin_password:
+                LOG.info('create.start: Roles: %s - '
+                         'have admin password - '
+                         'password_info: %s - ' % (
+                                context.roles, password_info))
+            else:
+                LOG.info('create.start: Roles: %s - '
+                         'no admin password - '
+                         'no password_info - ' % (context.roles,))
+            # ---- end of temporary block ----
+
             self._notify_about_instance_usage(
                     context, instance, "create.start",
                     extra_usage_info=extra_usage_info)
@@ -798,6 +812,20 @@ class ComputeManager(manager.SchedulerDependentManager):
                                   and not instance['access_ip_v6']):
                     instance = self._update_access_ip(context, instance,
                                                       network_info)
+
+                    # ---- start of temporary block ----
+                    # TODO(matiu): Remove this block - it is temporary to help
+                    # solve D-09359
+                    if admin_password:
+                        LOG.info('create.end: Roles: %s - '
+                                 'have admin password - '
+                                 'password_info: %s - ' % (
+                                        context.roles, password_info))
+                    else:
+                        LOG.info('create.end: Roles: %s - '
+                                 'no admin password - '
+                                 'no password_info - ' % (context.roles,))
+                    # ---- end of temporary block ----
 
                 self._notify_about_instance_usage(context, instance,
                         "create.end", network_info=network_info,
