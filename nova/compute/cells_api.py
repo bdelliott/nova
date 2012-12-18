@@ -327,7 +327,7 @@ class ComputeCellsAPI(compute_api.API):
     @check_instance_state(vm_state=[vm_states.ACTIVE, vm_states.STOPPED],
                           task_state=[None])
     @validate_cell
-    def resize(self, context, instance, *args, **kwargs):
+    def resize(self, context, instance, flavor_id=None, *args, **kwargs):
         """Resize (ie, migrate) a running instance.
 
         If flavor_id is None, the process is considered a migration, keeping
@@ -337,7 +337,9 @@ class ComputeCellsAPI(compute_api.API):
         # specify glance api servers to use downstream in child cells:
         context.glance_api_servers = CONF.glance_api_servers
 
-        super(ComputeCellsAPI, self).resize(context, instance, *args, **kwargs)
+        super(ComputeCellsAPI, self).resize(context, instance,
+                                            flavor_id=flavor_id, *args,
+                                            **kwargs)
 
         # NOTE(johannes): If we get to this point, then we know the
         # specified flavor_id is valid and exists. We'll need to load
@@ -346,8 +348,6 @@ class ComputeCellsAPI(compute_api.API):
         old_instance_type_id = instance['instance_type_id']
         old_instance_type = instance_types.get_instance_type(
                 old_instance_type_id)
-
-        flavor_id = kwargs.get('flavor_id')
 
         if not flavor_id:
             new_instance_type = old_instance_type
@@ -369,7 +369,8 @@ class ComputeCellsAPI(compute_api.API):
 
         # FIXME(comstud): pass new instance_type object down to a method
         # that'll unfold it
-        self._cast_to_cells(context, instance, 'resize', *args, **kwargs)
+        self._cast_to_cells(context, instance, 'resize', flavor_id=flavor_id,
+                            *args, **kwargs)
 
     @validate_cell
     def add_fixed_ip(self, context, instance, *args, **kwargs):
