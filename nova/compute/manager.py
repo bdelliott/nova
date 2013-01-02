@@ -2053,9 +2053,9 @@ class ComputeManager(manager.SchedulerDependentManager):
             self.compute_rpcapi.resize_instance(context, instance,
                     migration_ref, image, instance_type, reservations)
 
-    @exception.wrap_exception(notifier=notifier, publisher_id=publisher_id())
-    @wrap_instance_fault
-    @wrap_migration_error
+    #@exception.wrap_exception(notifier=notifier, publisher_id=publisher_id())
+    #@wrap_instance_fault
+    #@wrap_migration_error
     def prep_resize(self, context, image, instance, instance_type,
                     reservations=None, request_spec=None,
                     filter_properties=None, node=None):
