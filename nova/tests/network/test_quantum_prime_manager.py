@@ -1254,24 +1254,28 @@ class Quantum2ManagerTestsAddRemoveFixedIP(test.TestCase):
 
     def test_add_fixed_ip_to_instance_isolated(self):
         with contextlib.nested(
-            mock.patch(self.m_conn + '.get_interfaces'),
+            mock.patch(self.m_conn + '.get_allocated_networks'),
             mock.patch(self.m_conn + '.get_interface_for_device'),
             mock.patch(self.m_conn + '.allocate_ip_for_instance'),
             mock.patch(self.q_conn + '.update_port'),
             mock.patch(self.q_conn + '.get_port_by_attachment'),
-        ) as (get_interfaces,
+        ) as (get_allocated_networks,
               get_interface_for_device,
               allocate_ip_for_instance,
               update_port,
               get_port_by_attachment):
 
-            get_interfaces.return_value = \
-                    {'interfaces': [{'id': 'fake_uuid'}]}
+            ip_block = {'network_id': '1'}
+            get_allocated_networks.return_value = [
+                        {'id': 'fake_uuid',
+                         'ip_addresses':
+                            [{'address': '10.0.0.3',
+                              'ip_block': ip_block}]}]
 
-            get_interface_for_device.return_value = \
-                    {'interface': {'mac_address': 'xx.xx.xx.xx.xx.xx.xx',
-                                   'ip_addresses': [{'address': '10.0.0.5'},
-                                                    {'address': '10.0.0.6'}]}}
+            get_interface_for_device.return_value = {
+                    'interface': {'mac_address': 'xx.xx.xx.xx.xx.xx.xx',
+                                  'ip_addresses': [{'address': '10.0.0.5'},
+                                                   {'address': '10.0.0.6'}]}}
 
             get_port_by_attachment.return_value = 'some-uuid'
 
@@ -1284,24 +1288,28 @@ class Quantum2ManagerTestsAddRemoveFixedIP(test.TestCase):
 
     def test_add_fixed_ip_to_instance_rax(self):
         with contextlib.nested(
-            mock.patch(self.m_conn + '.get_interfaces'),
+            mock.patch(self.m_conn + '.get_allocated_networks'),
             mock.patch(self.m_conn + '.get_interface_for_device'),
             mock.patch(self.m_conn + '.allocate_ip_for_instance'),
             mock.patch(self.q_conn + '.update_port'),
             mock.patch(self.q_conn + '.get_port_by_attachment'),
-        ) as (get_interfaces,
+        ) as (get_allocated_networks,
               get_interface_for_device,
               allocate_ip_for_instance,
               update_port,
               get_port_by_attachment):
 
-            get_interfaces.return_value = \
-                    {'interfaces': [{'id': 'fake_uuid'}]}
+            ip_block = {'network_id': self.default_networks[1]['network_id']}
+            get_allocated_networks.return_value = [
+                        {'id': 'fake_uuid',
+                         'ip_addresses':
+                            [{'address': '10.0.0.3',
+                              'ip_block': ip_block}]}]
 
-            get_interface_for_device.return_value = \
-                    {'interface': {'mac_address': 'xx.xx.xx.xx.xx.xx.xx',
-                                   'ip_addresses': [{'address': '10.0.0.5'},
-                                                    {'address': '10.0.0.6'}]}}
+            get_interface_for_device.return_value = {
+                    'interface': {'mac_address': 'xx.xx.xx.xx.xx.xx.xx',
+                                  'ip_addresses': [{'address': '10.0.0.5'},
+                                                   {'address': '10.0.0.6'}]}}
             get_port_by_attachment.return_value = 'some-uuid'
 
             net_id = '11111111-1111-1111-1111-111111111111'
@@ -1314,18 +1322,18 @@ class Quantum2ManagerTestsAddRemoveFixedIP(test.TestCase):
 
     def test_add_fixed_ip_to_instance_no_interface(self):
         with contextlib.nested(
-            mock.patch(self.m_conn + '.get_interfaces'),
+            mock.patch(self.m_conn + '.get_allocated_networks'),
             mock.patch(self.m_conn + '.get_interface_for_device'),
             mock.patch(self.m_conn + '.allocate_ip_for_instance'),
             mock.patch(self.q_conn + '.update_port'),
             mock.patch(self.q_conn + '.get_port_by_attachment'),
-        ) as (get_interfaces,
+        ) as (get_allocated_networks,
               get_interface_for_device,
               allocate_ip_for_instance,
               update_port,
               get_port_by_attachment):
 
-            get_interfaces.return_value = {}
+            get_allocated_networks.return_value = {}
             get_interface_for_device.return_value = {}
 
             self.net_manager.add_fixed_ip_to_instance(self.context,
@@ -1349,17 +1357,16 @@ class Quantum2ManagerTestsAddRemoveFixedIP(test.TestCase):
               get_port_by_attachment):
 
             ip_block = {'network_id': 'some_uuid'}
-            get_allocated_networks.return_value = \
-                    {'instance':
-                        {'interfaces': [{'id': 'fake_uuid',
-                                         'ip_addresses':
-                                            [{'address': '10.0.0.3',
-                                              'ip_block': ip_block}]}]}}
+            get_allocated_networks.return_value = [
+                        {'id': 'fake_uuid',
+                         'ip_addresses':
+                            [{'address': '10.0.0.3',
+                              'ip_block': ip_block}]}]
 
-            get_interface_for_device.return_value = \
-                    {'interface': {'mac_address': 'xx.xx.xx.xx.xx.xx.xx',
-                                   'ip_addresses': [{'address': '10.0.0.5'},
-                                                    {'address': '10.0.0.6'}]}}
+            get_interface_for_device.return_value = {
+                    'interface': {'mac_address': 'xx.xx.xx.xx.xx.xx.xx',
+                                  'ip_addresses': [{'address': '10.0.0.5'},
+                                                   {'address': '10.0.0.6'}]}}
             get_port_by_attachment.return_value = 'some-uuid'
 
             self.net_manager.remove_fixed_ip_from_instance(self.context,

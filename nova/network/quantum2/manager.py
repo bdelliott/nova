@@ -564,14 +564,21 @@ class QuantumManager(manager.SchedulerDependentManager):
         else:
             tenant_id = context.project_id
 
-        # get the interface for this instance and network from melange
-        res = self.m_conn.get_interfaces(tenant_id=context.project_id,
-                                         network_id=network_id,
-                                         device_id=instance_id)
-        try:
-            interface_id = res['interfaces'][0]['id']
-        except (KeyError, IndexError):
-            LOG.exception(_('Interface not found, IP allocation failed'))
+        # get the interfaces for this instance and find one attached to nw_id
+        interfaces = self.m_conn.get_allocated_networks(instance_id)
+        interface_id = None
+        for interface in interfaces:
+            for ip_addr in interface.get('ip_addresses', []):
+                ip_block = ip_addr.get('ip_block', {})
+                block_network_id = ip_block.get('network_id')
+                if block_network_id == network_id:
+                    # found it!
+                    interface_id = interface.get('id')
+                    break
+            if interface_id is not None:
+                break
+        else:
+            LOG.error(_('Interface not found, IP allocation failed'))
             return
 
         # allocate the ip in melange
@@ -590,18 +597,21 @@ class QuantumManager(manager.SchedulerDependentManager):
         LOG.debug(msg % {'address': address, 'instance_id': instance_id})
 
         # get the interface on the instance that has address
-        res = self.m_conn.get_allocated_networks(instance_id)
-        try:
-            interfaces = res['instance']['interfaces']
-            for interface in interfaces:
-                for ip_addr in interface['ip_addresses']:
-                    if ip_addr['address'] == address:
-                        interface_id = interface['id']
-                        print ip_addr
-                        network_id = ip_addr['ip_block']['network_id']
-        except KeyError:
-            LOG.exception(_('IP could not be found on any interface. '
-                            'IP Deallocation failed.'))
+        interfaces = self.m_conn.get_allocated_networks(instance_id)
+        interface_id = None
+        for interface in interfaces:
+            for ip_addr in interface.get('ip_addresses', []):
+                if ip_addr.get('address') == address:
+                    # found it!
+                    interface_id = interface.get('id')
+                    ip_block = ip_addr.get('ip_block', {})
+                    network_id = ip_block.get('network_id')
+                    break
+            if interface_id is not None:
+                break
+        else:
+            LOG.error(_('IP could not be found on any interface. '
+                        'IP Deallocation failed.'))
             return
 
         # deallocate the ip
