@@ -32,9 +32,9 @@ from nova import quota
 
 opts = [
     cfg.IntOpt('quota_networks',
-                     default=3,
-                     help='number of private networks allowed per project'),
-    ]
+               default=3,
+               help='number of private networks allowed per project'),
+]
 
 CONF = cfg.CONF
 CONF.register_opts(opts)
@@ -43,9 +43,9 @@ CONF.register_opts(opts)
 try:
     os_network_v2_opts = [
         cfg.StrOpt('quantum_default_tenant_id',
-                         default="default",
-                         help=('Default tenant id when creating quantum '
-                               'networks'))
+                   default="default",
+                   help=('Default tenant id when creating quantum '
+                   'networks'))
     ]
     CONF.register_opts(os_network_v2_opts)
 except cfg.DuplicateOptError:
@@ -195,8 +195,9 @@ class NetworkController(object):
             QUOTAS.commit(context, reservation)
         except Exception:
             QUOTAS.rollback(context, reservation)
-            LOG.exception(_("Create networks failed"), extra=network)
-            raise exc.HTTPBadRequest("create_network failed.")
+            msg = _("Create networks failed")
+            LOG.exception(msg, extra=network)
+            raise exc.HTTPServiceUnavailable(explanation=msg)
 
         return {'network': network[0]}
 
