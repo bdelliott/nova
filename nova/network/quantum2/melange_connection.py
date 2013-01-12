@@ -145,8 +145,7 @@ class MelangeConnection(object):
 
         url = 'ipam/instances/%s/interfaces/%s/ip_addresses' % (instance_id,
                                                                 interface_id)
-        res = json.loads(self.post(url, body))
-        return res['instance']['interfaces']
+        return json.loads(self.post(url, body))
 
     def deallocate_ip_for_instance(self, instance_id, interface_id, address):
         """

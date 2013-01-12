@@ -285,8 +285,17 @@ class QuantumManager(manager.SchedulerDependentManager):
 
     def _vif_from_network(self, m_vif, network_id, label):
         network = self._map_network(network_id, label)
+
+        ip_blocks = {}
         for ip_address in m_vif['ip_addresses']:
-            ip_block = ip_address['ip_block']
+            address = ip_address['address']
+            block = ip_address['ip_block']
+            if block['cidr'] not in ip_blocks:
+                ip_blocks[block['cidr']] = (block, [])
+            ip_blocks[block['cidr']][1].append(address)
+
+        for cidr, block_thing in ip_blocks.iteritems():
+            ip_block, ip_addresses = block_thing
 
             gateway = None
             if ip_block.get('gateway'):
@@ -310,7 +319,8 @@ class QuantumManager(manager.SchedulerDependentManager):
                 subnet.add_route(model.Route(cidr=str(route_cidr),
                                              gateway=gateway))
 
-            subnet.add_ip(model.FixedIP(address=ip_address['address']))
+            for ip_address in ip_addresses:
+                subnet.add_ip(model.FixedIP(address=ip_address))
             network.add_subnet(subnet)
         return model.VIF(id=m_vif['id'], address=m_vif['mac_address'],
                          network=network)
