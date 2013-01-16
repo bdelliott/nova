@@ -80,11 +80,8 @@ TEST_LOGS3 = [
     ]
 
 
-def fake_service_get_all(context):
-    return TEST_COMPUTE_SERVICES
-
-
-def fake_task_log_get_all(context, task_name, begin, end):
+def fake_task_log_get_all(context, task_name, begin, end,
+                          host=None, state=None):
     assert task_name == "instance_usage_audit"
 
     if begin == begin1 and end == end1:
@@ -114,13 +111,18 @@ class InstanceUsageAuditLogTest(test.TestCase):
         self.context = context.get_admin_context()
         timeutils.set_time_override(datetime.datetime(2012, 7, 5, 10, 0, 0))
         self.controller = ial.InstanceUsageAuditLogController()
+        self.host_api = self.controller.host_api
+
+        def fake_service_get_all(context, disabled):
+            self.assertTrue(disabled is None)
+            return TEST_COMPUTE_SERVICES
 
         self.stubs.Set(utils, 'last_completed_audit_period',
                             fake_last_completed_audit_period)
         self.stubs.Set(db, 'service_get_all',
-                            fake_service_get_all)
+                       fake_service_get_all)
         self.stubs.Set(db, 'task_log_get_all',
-                            fake_task_log_get_all)
+                       fake_task_log_get_all)
 
     def tearDown(self):
         super(InstanceUsageAuditLogTest, self).tearDown()
@@ -175,6 +177,7 @@ class InstanceUsageAuditLogTest(test.TestCase):
         req = fakes.HTTPRequest.blank(
                     '/v2/fake/os-instance_usage_audit_log/show')
         result = self.controller.show(req, '2012-07-07 10:00:00')
+        print result
         self.assertIn('instance_usage_audit_log', result)
         logs = result['instance_usage_audit_log']
         self.assertEquals(57, logs['total_instances'])
