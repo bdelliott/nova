@@ -111,6 +111,14 @@ class MelangeConnection(object):
                 elif response.status == 413:
                     raise exception.NetworkOverQuota(msg=response_str)
                 raise Exception(_('Server returned error: %s') % response_str)
+
+            # NOTE(jkoelker) once we figure out the cause of these we can fold
+            #                this into the exception list below
+            except httplib.BadStatusLine as e:
+                LOG.exception(_("Connection to melange interrupted: "
+                                "%s") % e.line)
+                time.sleep(1)
+
             except (socket.error, IOError):
                 LOG.exception(_('Connection error contacting melange'
                                 ' service, retrying'))
