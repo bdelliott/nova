@@ -39,6 +39,9 @@ cells_opts = [
     cfg.IntOpt('call_timeout',
                 default=60,
                 help='Seconds to wait for response from a call to a cell.'),
+    cfg.IntOpt('bandwidth_update_interval',
+                default=600,
+                help='Seconds between bandwidth updates for cells.'),
 ]
 
 cfg.CONF.register_opts(cells_opts, group='cells')

@@ -184,11 +184,12 @@ class LocalAPI(object):
 
     def bw_usage_update(self, context, uuid, mac, start_period,
                         bw_in, bw_out, last_ctr_in, last_ctr_out,
-                        last_refreshed=None):
+                        last_refreshed=None, update_cells=True):
         return self._manager.bw_usage_update(context, uuid, mac, start_period,
                                              bw_in, bw_out,
                                              last_ctr_in, last_ctr_out,
-                                             last_refreshed)
+                                             last_refreshed,
+                                             update_cells=update_cells)
 
     def get_backdoor_port(self, context, host):
         raise exc.InvalidRequest
@@ -468,11 +469,11 @@ class API(object):
 
     def bw_usage_update(self, context, uuid, mac, start_period,
                         bw_in, bw_out, last_ctr_in, last_ctr_out,
-                        last_refreshed=None):
+                        last_refreshed=None, update_cells=True):
         return self.conductor_rpcapi.bw_usage_update(
             context, uuid, mac, start_period,
             bw_in, bw_out, last_ctr_in, last_ctr_out,
-            last_refreshed)
+            last_refreshed, update_cells=update_cells)
 
     #NOTE(mtreinish): This doesn't work on multiple conductors without any
     # topic calculation in conductor_rpcapi. So the host param isn't used

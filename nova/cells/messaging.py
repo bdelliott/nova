@@ -868,11 +868,21 @@ class _BroadcastMessageMethods(_BaseMessageMethods):
         return self.db.compute_node_statistics(message.ctxt)
 
 
+class _BWUpdateMessage(_BroadcastMessage):
+    """A BW Update Broadcast Message.  Setting the message_type below
+    causes a separate queue to be created for these updates between
+    cells.
+    """
+    message_type = 'bw_update'
+
+
 _CELL_MESSAGE_TYPE_TO_MESSAGE_CLS = {'targeted': _TargetedMessage,
                                      'broadcast': _BroadcastMessage,
+                                     'bw_update': _BWUpdateMessage,
                                      'response': _ResponseMessage}
 _CELL_MESSAGE_TYPE_TO_METHODS_CLS = {'targeted': _TargetedMessageMethods,
                                      'broadcast': _BroadcastMessageMethods,
+                                     'bw_update': _BroadcastMessageMethods,
                                      'response': _ResponseMessageMethods}
 
 
