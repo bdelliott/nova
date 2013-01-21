@@ -46,7 +46,7 @@ class RequestContext(object):
                  roles=None, remote_address=None, timestamp=None,
                  request_id=None, auth_token=None, overwrite=True,
                  quota_class=None, user_name=None, project_name=None,
-                 service_catalog=None, instance_lock_checked=False,
+                 service_catalog=[], instance_lock_checked=False,
                  glance_api_servers=None, **kwargs):
         """
         :param read_deleted: 'no' indicates deleted records are hidden, 'yes'
@@ -81,8 +81,11 @@ class RequestContext(object):
         self.request_id = request_id
         self.auth_token = auth_token
         # Only include required parts of service_catalog
-        self.service_catalog = [s for s in service_catalog
-                if s.get('type') in ('volume')]
+        if service_catalog is not None:
+            self.service_catalog = [s for s in service_catalog
+                    if s.get('type') in ('volume')]
+        else:
+            self.service_catalog = service_catalog
         self.instance_lock_checked = instance_lock_checked
 
         # NOTE(markmc): this attribute is currently only used by the
