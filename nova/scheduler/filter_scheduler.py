@@ -25,6 +25,7 @@ from nova.openstack.common import log as logging
 from nova.openstack.common.notifier import api as notifier
 from nova.scheduler import driver
 from nova.scheduler import scheduler_options
+from nova import timing
 
 CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
@@ -37,6 +38,7 @@ class FilterScheduler(driver.Scheduler):
         self.cost_function_cache = None
         self.options = scheduler_options.SchedulerOptions()
 
+    @timing.timefunc
     def schedule_run_instance(self, context, request_spec,
                               admin_password, injected_files,
                               requested_networks, is_first_time,
@@ -93,6 +95,7 @@ class FilterScheduler(driver.Scheduler):
         notifier.notify(context, notifier.publisher_id("scheduler"),
                         'scheduler.run_instance.end', notifier.INFO, payload)
 
+    @timing.timefunc
     def schedule_prep_resize(self, context, image, request_spec,
                              filter_properties, instance, instance_type,
                              reservations):
