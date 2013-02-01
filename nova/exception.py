@@ -1342,6 +1342,14 @@ class ServiceGroupUnavailable(NovaException):
                 "temporarily unavailable.")
 
 
+class RegionAmbiguity(NovaException):
+    msg_fmt = _("Ambiguous endpoint for region: %(region)s")
+
+
+class NoServiceEndpoint(NotFound):
+    msg_fmt = _("Service Catalog does not contain %(service_id)s endpoint.")
+
+
 class DBNotAllowed(NovaException):
     msg_fmt = _('%(binary)s attempted direct database access which is '
                 'not allowed by policy')
