@@ -85,7 +85,8 @@ def return_server_by_uuid(context, server_uuid):
             'uuid': '0cc3346e-9fef-4445-abe6-5d2b2690ec64',
             'name': 'fake',
             'locked': False,
-            'vm_state': vm_states.ACTIVE}
+            'vm_state': vm_states.ACTIVE,
+            'metadata': {}}
 
 
 def return_server_nonexistent(context, server_id):

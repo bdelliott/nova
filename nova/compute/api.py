@@ -2297,7 +2297,9 @@ class API(base.Base):
     def delete_instance_metadata(self, context, instance, key):
         """Delete the given metadata item from an instance."""
         self.db.instance_metadata_delete(context, instance['uuid'], key)
-        instance['metadata'] = {}
+        instance = self.db.instance_get_by_uuid(context, instance['uuid'])
+        instance = dict(instance.iteritems())
+        instance['metadata'] = utils.metadata_to_dict(instance['metadata'])
         notifications.send_update(context, instance, instance)
         self.compute_rpcapi.change_instance_metadata(context,
                                                      instance=instance,

@@ -5279,7 +5279,7 @@ class ComputeAPITestCase(BaseTestCase):
         msg = test_notifier.NOTIFICATIONS[2]
         payload = msg['payload']
         self.assertTrue('metadata' in payload)
-        self.assertEquals(payload['metadata'], {})
+        self.assertEquals(payload['metadata'], metadata)
 
         db.instance_destroy(_context, instance['uuid'])
 
