@@ -1500,7 +1500,7 @@ class Controller(wsgi.Controller):
     def _get_server_search_options(self):
         """Return server search options allowed by non-admin."""
         return ('reservation_id', 'name', 'status', 'image', 'flavor',
-                'ip', 'changes-since', 'all_tenants')
+                'ip', 'changes-since', 'all_tenants', 'RAX-SI:image_schedule')
 
 
 def create_resource(ext_mgr):

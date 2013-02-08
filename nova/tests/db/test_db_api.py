@@ -1904,6 +1904,21 @@ class InstanceTestCase(test.TestCase, ModelsObjectComparatorMixin):
         meta = utils.metadata_to_dict(new_ref['metadata'])
         self.assertEqual(meta, {'mk1': 'mv3'})
 
+    def test_instance_system_metadata_delete(self):
+        ctxt = context.get_admin_context()
+
+        # Create an instance with some metadata
+        metadata = {'test_key1': 'blah'}
+        values = {'metadata': {'host': 'foo', 'key1': 'meow'},
+                  'system_metadata': metadata}
+        instance = db.instance_create(ctxt, values)
+
+        db.instance_system_metadata_delete(ctxt, instance['uuid'],
+                                                   metadata)
+        instance_meta = db.instance_system_metadata_get(ctxt, instance['uuid'])
+        self.assertEqual(len(instance_meta.keys()), 0)
+        db.instance_destroy(ctxt, instance['uuid'])
+
     def test_instance_update_unique_name(self):
         context1 = context.RequestContext('user1', 'p1')
         context2 = context.RequestContext('user2', 'p2')

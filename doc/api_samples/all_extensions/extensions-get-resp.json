@@ -633,6 +633,14 @@
             "updated": "2012-03-07T14:46:43Z"
         },
         {
+            "alias": "rax-si-image-schedule",
+            "description": "Enables automatic scheduled images to be taken of a server.",
+            "links": [],
+            "name": "ScheduledImages",
+            "namespace": "http://docs.openstack.org/servers/api/ext/scheduled_images/v1.0",
+            "updated": "2013-03-20T00:00:00Z"
+        },
+        {
             "alias": "os-used-limits",
             "description": "Provide data on limited resources that are being used.",
             "links": [],
