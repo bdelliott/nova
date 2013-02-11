@@ -145,7 +145,8 @@ class ThreadPool(object):
 class DBAPI(object):
     def __init__(self):
         self.impl = utils.LazyPluggable('db_backend',
-                                        sqlalchemy='nova.db.sqlalchemy.api')
+                                        sqlalchemy='nova.db.sqlalchemy.api',
+                                        mysqldb='nova.db.mysqldb.api')
         if not CONF.use_eventlet_tpool:
             self.pool = ThreadPool(max_threads=40)
     def __getattr__(self, key):
