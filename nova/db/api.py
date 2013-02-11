@@ -42,13 +42,12 @@ these objects be simple dictionaries.
                        pool of available hardware (Default: True)
 
 """
-from eventlet import tpool
 
 from nova.cells import rpcapi as cells_rpcapi
 from nova import exception
 from nova.openstack.common import cfg
 from nova.openstack.common import log as logging
-from nova import utils
+from nova.openstack.common import importutils
 
 
 db_opts = [
@@ -64,105 +63,38 @@ db_opts = [
     cfg.StrOpt('snapshot_name_template',
                default='snapshot-%s',
                help='Template string to be used to generate snapshot names'),
-    cfg.BoolOpt('dbapi_tpool_enable',
-                default=False,
-                help="enable the use of thread pooling for DB API calls"),
-    cfg.BoolOpt('use_eventlet_tpool',
-                default=False,
-                help="when dbapi_tpool_enable is true, use enable use of "
-                     "eventlet tpool vs our tpool."),
     ]
 
 CONF = cfg.CONF
 CONF.register_opts(db_opts)
 
-import Queue
-import sys
-import threading
-
-class ThreadWrapper(object):
-    def __init__(self, pool):
-        self.pool = pool
-        self.exc_sema = threading.Semaphore()
-
-    def execute(self, method, *args, **kwargs):
-        info = {}
-
-        def do_it():
-            try:
-                response = method(*args, **kwargs)
-                failure = False
-            except Exception:
-                failure = True
-                response = sys.exc_info()
-            info['response'] = response
-            info['failure'] = failure
-
-        thr = threading.Thread(target=do_it)
-        thr.start()
-        thr.join()
-        self.exc_sema.release()
-        response = info['response']
-        if info['failure']:
-            raise response[0], response[1], response[2]
-        return response
-
-
-class ThreadPool(object):
-    def __init__(self, min_threads=1, max_threads=20, idle_timeout=10):
-        self.num_threads = 0
-        self.min_threads = min_threads
-        self.max_threads = max_threads
-        self.idle_timeout = idle_timeout
-        self.thr_queue = Queue.Queue(maxsize=max_threads)
-
-    def get_thread(self):
-        try:
-            thr = self.thr_queue.get(block=False)
-        except Queue.Empty:
-            if self.num_threads < self.max_threads:
-                self.num_threads += 1
-                thr = ThreadWrapper(self)
-            else:
-                thr = self.thr_queue.get()
-        return thr
-
-    def put_thread(self, thr):
-        try:
-            self.thr_queue.put(thr)
-        except Queue.Full:
-            self.num_threads -= 1
-            pass
-
-    def execute(self, method, *args, **kwargs):
-        thr = self.get_thread()
-        try:
-            return thr.execute(method, *args, **kwargs)
-        finally:
-            self.put_thread(thr)
-
 
 class DBAPI(object):
+    known_backends = {'sqlalchemy': 'nova.db.sqlalchemy.api',
+                      'mysqldb': 'nova.db.mysqldb.api'}
+
     def __init__(self):
-        self.impl = utils.LazyPluggable('db_backend',
-                                        sqlalchemy='nova.db.sqlalchemy.api',
-                                        mysqldb='nova.db.mysqldb.api')
-        if not CONF.use_eventlet_tpool:
-            self.pool = ThreadPool(max_threads=40)
+        self.__backend = None
+
+    def __get_backend(self):
+        if self.__backend:
+            return self.__backend
+        backend_name = CONF.db_backend
+        backend_path = self.known_backends.get(backend_name,
+                                               backend_name)
+        backend_mod = importutils.import_module(backend_path)
+        try:
+            self.__backend = backend_mod.API()
+        except AttributeError:
+            self.__backend = backend_mod
+        return self.__backend
+
     def __getattr__(self, key):
-        method = getattr(self.impl, key)
-        if not CONF.dbapi_tpool_enable:
-            return method
-        def dbapi_tpool_wrapper(*args, **kwargs):
-            if CONF.use_eventlet_tpool:
-                return tpool.execute(method, *args, **kwargs)
-            else:
-                return self.pool.execute(method, *args, **kwargs)
-        return dbapi_tpool_wrapper
+        return getattr(self.__get_backend(), key)
 
 
-LOG = logging.getLogger(__name__)
 IMPL = DBAPI()
+LOG = logging.getLogger(__name__)
 
 
 class NoMoreNetworks(exception.NovaException):

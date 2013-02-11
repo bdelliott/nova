@@ -3977,7 +3977,7 @@ def bw_usage_get_by_uuids(context, uuids, start_period):
 
 
 @require_context
-def bw_usage_update_sqlalchemy_orm(context, uuid, mac, start_period, bw_in, bw_out,
+def bw_usage_update(context, uuid, mac, start_period, bw_in, bw_out,
                     last_ctr_in, last_ctr_out, last_refreshed=None,
                     session=None):
     if not session:
@@ -4016,108 +4016,108 @@ def bw_usage_update_sqlalchemy_orm(context, uuid, mac, start_period, bw_in, bw_o
         bwusage.save(session=session)
 
 
-_INFO = {}
-import sqlalchemy
-
-def _get_engine():
-    if 'engine' in _INFO:
-        return _INFO['engine']
-    engine = db_session.get_engine()
-    _INFO['engine'] = engine
-    return engine
-
-def _get_metadata():
-    if 'metadata' in _INFO:
-        return _INFO['metadata']
-    metadata = sqlalchemy.MetaData()
-    metadata.bind = _get_engine()
-    _INFO['metadata'] = metadata
-    return metadata
-
-def _get_bw_usage():
-    if 'bw_usage' in _INFO:
-        return _INFO['bw_usage']
-    metadata = _get_metadata()
-    bw_usage = sqlalchemy.Table('bw_usage_cache', metadata, autoload=True)
-    _INFO['bw_usage'] = bw_usage
-    return bw_usage
-
-
-@require_context
-def bw_usage_update_sqlalchemy_lowlevel(context, uuid, mac, start_period, bw_in, bw_out,
-                    last_ctr_in, last_ctr_out, last_refreshed=None,
-                    session=None):
+#_INFO = {}
+#import sqlalchemy
+#
+#def _get_engine():
+#    if 'engine' in _INFO:
+#        return _INFO['engine']
 #    engine = db_session.get_engine()
-#    conn = engine.connect()
+#    _INFO['engine'] = engine
+#    return engine
+#
+#def _get_metadata():
+#    if 'metadata' in _INFO:
+#        return _INFO['metadata']
 #    metadata = sqlalchemy.MetaData()
-#    metadata.bind = engine
-#    table = sqlalchemy.Table('bw_usage_cache', metadata, autoload=True)
-
-    conn = _get_engine().connect()
-    table = _get_bw_usage()
-
-    values = {'last_refreshed': last_refreshed,
-              'last_ctr_in': last_ctr_in,
-              'last_ctr_out': last_ctr_out,
-              'bw_in': bw_in,
-              'bw_out': bw_out}
-
-    upd = table.update().where(
-            sqlalchemy.and_(table.c.uuid == uuid,
-                            table.c.mac == mac,
-                            table.c.start_period == start_period)).\
-            values(values)
-    result = conn.execute(upd)
-    if not result.rowcount:
-        values['uuid'] = uuid
-        values['mac'] = mac
-        values['start_period'] = start_period
-        ins = table.insert().values(values)
-        conn.execute(ins)
-
-
-import MySQLdb
-from MySQLdb.constants import CLIENT as mysql_client_constants
-MySQLdb.threadsafety = 1
-
-class ConnPool(object):
-    def __init__(self):
-        self.conns_available = []
-        self.num_conns = 0
-        self.max_conns = 50
-
-    def _create_conn(self):
-        # be lame and open a new connection (non-pooled)
-        sql_connection = CONF.sql_connection
-        connection_dict = sqlalchemy.engine.url.make_url(sql_connection)
-        password = connection_dict.password or ''
-        conn_args = {
-            'db': connection_dict.database,
-            'passwd': password,
-            'host': connection_dict.host,
-            'user': connection_dict.username,
-            'client_flag': mysql_client_constants.FOUND_ROWS}
-
-        print "connecting"
-        conn = MySQLdb.connect(**conn_args)
-        print "done connecting"
-        self.num_conns += 1
-        return conn
-
-    def get(self):
-        try:
-            return self.conns_available.pop()
-        except IndexError:
-            pass
-        if self.num_conns < self.max_conns:
-            return self._create_conn()
-        assert False
-
-    def put(self, conn):
-        self.conns_available.append(conn)
-
-
-_POOL = ConnPool()
+#    metadata.bind = _get_engine()
+#    _INFO['metadata'] = metadata
+#    return metadata
+#
+#def _get_bw_usage():
+#    if 'bw_usage' in _INFO:
+#        return _INFO['bw_usage']
+#    metadata = _get_metadata()
+#    bw_usage = sqlalchemy.Table('bw_usage_cache', metadata, autoload=True)
+#    _INFO['bw_usage'] = bw_usage
+#    return bw_usage
+#
+#
+#@require_context
+#def bw_usage_update_sqlalchemy_lowlevel(context, uuid, mac, start_period, bw_in, bw_out,
+#                    last_ctr_in, last_ctr_out, last_refreshed=None,
+#                    session=None):
+##    engine = db_session.get_engine()
+##    conn = engine.connect()
+##    metadata = sqlalchemy.MetaData()
+##    metadata.bind = engine
+##    table = sqlalchemy.Table('bw_usage_cache', metadata, autoload=True)
+#
+#    conn = _get_engine().connect()
+#    table = _get_bw_usage()
+#
+#    values = {'last_refreshed': last_refreshed,
+#              'last_ctr_in': last_ctr_in,
+#              'last_ctr_out': last_ctr_out,
+#              'bw_in': bw_in,
+#              'bw_out': bw_out}
+#
+#    upd = table.update().where(
+#            sqlalchemy.and_(table.c.uuid == uuid,
+#                            table.c.mac == mac,
+#                            table.c.start_period == start_period)).\
+#            values(values)
+#    result = conn.execute(upd)
+#    if not result.rowcount:
+#        values['uuid'] = uuid
+#        values['mac'] = mac
+#        values['start_period'] = start_period
+#        ins = table.insert().values(values)
+#        conn.execute(ins)
+#
+#
+#import MySQLdb
+#from MySQLdb.constants import CLIENT as mysql_client_constants
+#MySQLdb.threadsafety = 1
+#
+#class ConnPool(object):
+#    def __init__(self):
+#        self.conns_available = []
+#        self.num_conns = 0
+#        self.max_conns = 50
+#
+#    def _create_conn(self):
+#        # be lame and open a new connection (non-pooled)
+#        sql_connection = CONF.sql_connection
+#        connection_dict = sqlalchemy.engine.url.make_url(sql_connection)
+#        password = connection_dict.password or ''
+#        conn_args = {
+#            'db': connection_dict.database,
+#            'passwd': password,
+#            'host': connection_dict.host,
+#            'user': connection_dict.username,
+#            'client_flag': mysql_client_constants.FOUND_ROWS}
+#
+#        print "connecting"
+#        conn = MySQLdb.connect(**conn_args)
+#        print "done connecting"
+#        self.num_conns += 1
+#        return conn
+#
+#    def get(self):
+#        try:
+#            return self.conns_available.pop()
+#        except IndexError:
+#            pass
+#        if self.num_conns < self.max_conns:
+#            return self._create_conn()
+#        assert False
+#
+#    def put(self, conn):
+#        self.conns_available.append(conn)
+#
+#
+#_POOL = ConnPool()
 
 
 @require_context
@@ -4163,9 +4163,6 @@ def bw_usage_update_mysqldb(context, uuid, mac, start_period, bw_in, bw_out,
         except Exception:
             pass
         _POOL.put(conn)
-
-
-bw_usage_update = bw_usage_update_mysqldb
 
 
 ####################

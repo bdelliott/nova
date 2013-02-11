@@ -15,9 +15,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
-import sys
-
 from nova.db.mysqldb import pool as db_pool
+from nova.db.sqlalchemy import api as sqlalchemy_api
 
 pool = db_pool.ConnPool()
 
@@ -29,10 +28,3 @@ class API(object):
     def __getattr__(self, key):
         # forward unimplemented method to sqlalchemy backend:
         return getattr(sqlalchemy_api, key)
-
-
-# NOTE(belliott) fancy hack borrowed from Guido:
-# http://mail.python.org/pipermail/python-ideas/2012-May/014969.html
-sys.modules[__name__] = API()
-
-from nova.db.sqlalchemy import api as sqlalchemy_api
