@@ -22,6 +22,11 @@
 import MySQLdb
 from MySQLdb.constants import CLIENT as mysql_client_constants
 MySQLdb.threadsafety = 1
+import sqlalchemy
+
+from nova.openstack.common import cfg
+
+CONF = cfg.CONF
 
 
 class ConnPool(object):
