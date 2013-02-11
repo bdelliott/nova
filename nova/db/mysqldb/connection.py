@@ -20,6 +20,7 @@ import time
 
 import MySQLdb
 from MySQLdb.constants import CLIENT as mysql_client_constants
+from MySQLdb import cursors
 
 from nova.openstack.common import cfg
 from nova.openstack.common import log as logging
@@ -78,6 +79,9 @@ class _Connection(object):
         else:
             self._conn.commit()
         self.pool.put(self)
+
+    def cursor(self):
+        return self._conn.cursor(cursorclass=cursors.DictCursor)
 
     def ensure_connection(self):
         if self._conn:

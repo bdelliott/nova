@@ -23,36 +23,104 @@ here.
 """
 import datetime
 
+from nova.db import decorators
 from nova.db.mysqldb import connection
 from nova.db.sqlalchemy import api as sqlalchemy_api
 from nova import exception
-
-_CONN_POOL = connection.ConnectionPool()
+from nova.openstack.common import uuidutils
 
 is_user_context = sqlalchemy_api.is_user_context
 
-def require_context(f):
-    def wrapper(*args, **kwargs):
-        context = args[1]
-        if not context.is_admin and not is_user_context(context):
-            raise exception.NotAuthorized()
-        return f(*args, **kwargs)
-    wrapper.__name__ = f.__name__
-    return wrapper
-
 
 class API(object):
-    # TODO(belliott) mysql raw methods to be implemented here.
+
+    def __init__(self):
+        self.pool = connection.ConnectionPool()
+
+    def _instance_get_by_uuid(self, context, uuid, cursor):
+
+        # TODO full impl of the read_deleted feature
+        read_deleted = context.read_deleted == 'yes'
+
+        # TODO project_only
+
+        # TODO security_group_rules join
+        sql = """SELECT * from instances
+            LEFT OUTER JOIN instance_info_caches on
+                instance_info_caches.instance_uuid = instances.uuid
+            LEFT OUTER JOIN instance_metadata on
+                instance_metadata.instance_uuid = %(uuid)s and
+                instance_metadata.deleted = %(deleted)s
+            LEFT OUTER JOIN instance_system_metadata on
+                instance_system_metadata.instance_uuid = %(uuid)s and
+                instance_system_metadata.deleted = %(deleted)s
+            LEFT OUTER JOIN instance_types on
+                instances.instance_type_id = instance_types.id
+            WHERE instances.uuid = %(uuid)s
+              AND instances.deleted = %(deleted)s"""
+
+
+        args = {'uuid': uuid,
+                'deleted': read_deleted}
+        cursor.execute(sql, args)
+
+        row = cursor.fetchone()
+
+        if not row:
+            raise exception.InstanceNotFound(instance_id=uuid)
+
+        return self._make_sqlalchemy_like_dict(row)
+
+    def _instance_update(self, context, instance_uuid, values,
+                         copy_old_instance=False):
+        with self.pool.get() as conn:
+            cursor = conn.cursor()
+
+            if not uuidutils.is_uuid_like(instance_uuid):
+                raise exception.InvalidUUID(instance_uuid)
+
+            instance_ref = self._instance_get_by_uuid(context, instance_uuid,
+                                                      cursor)            
+            # TODO do the actual updating, hah!
+            raise Exception("TODO updating")
+
+    def _make_sqlalchemy_like_dict(self, row):
+        """Make a SQLAlchemy-like dictionary, where each join gets namespaced as
+        dictionary within the top-level dictionary.
+        """
+        result = {}
+        for key, value in row.iteritems():
+            # find keys like join_table_name.column and dump them into a
+            # sub-dict
+            tok = key.split(".")
+            if len(tok) == 2:
+                tbl, col = tok
+                join_dict = result.setdefault(tbl, {})
+                join_dict[col] = value
+            else:
+                result[key] = value
+            
+        self._pretty_print_result(result)
+        return result
+
+    def _pretty_print_result(self, result):
+        import pprint
+        pprint.pprint(result, indent=4)
+
+    @decorators.require_context
+    def instance_update(self, context, instance_uuid, values):
+        instance_ref = self._instance_update(context, instance_uuid, values)[1]
+        return instance_ref
 
     def __getattr__(self, key):
         # forward unimplemented method to sqlalchemy backend:
         return getattr(sqlalchemy_api, key)
 
-    @require_context
+    @decorators.require_context
     def bw_usage_update(self, context, uuid, mac, start_period, bw_in, bw_out,
                         last_ctr_in, last_ctr_out, last_refreshed=None):
         # kick this shit raw sql style:
-        with _CONN_POOL.get() as conn:
+        with self.pool.get() as conn:
             def _datestr(dt):
                 return dt.strftime('%Y-%m-%d %H:%M:%S')
     
@@ -65,7 +133,7 @@ class API(object):
             if num_rows_affected > 0:
                 return
         # Start a new transaction
-        with _CONN_POOL.get() as conn:
+        with self.pool.get() as conn:
             sql = """INSERT INTO bw_usage_cache
                      (created_at, updated_at, deleted_at, deleted, uuid, mac,
                       start_period, last_refreshed, bw_in, bw_out, last_ctr_in, last_ctr_out) VALUES
