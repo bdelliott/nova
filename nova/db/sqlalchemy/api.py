@@ -4078,60 +4078,91 @@ def bw_usage_update_sqlalchemy_lowlevel(context, uuid, mac, start_period, bw_in,
 
 import MySQLdb
 from MySQLdb.constants import CLIENT as mysql_client_constants
+MySQLdb.threadsafety = 1
 
-def _connect():
-    # be lame and open a new connection (non-pooled)
-    sql_connection = CONF.sql_connection
-    connection_dict = sqlalchemy.engine.url.make_url(sql_connection)
-    password = connection_dict.password or ''
-    conn_args = {
-        'db': connection_dict.database,
-        'passwd': password,
-        'host': connection_dict.host,
-        'user': connection_dict.username,
-        'client_flag': mysql_client_constants.FOUND_ROWS}
+class ConnPool(object):
+    def __init__(self):
+        self.conns_available = []
+        self.num_conns = 0
+        self.max_conns = 50
 
-    return MySQLdb.connect(**conn_args)
+    def _create_conn(self):
+        # be lame and open a new connection (non-pooled)
+        sql_connection = CONF.sql_connection
+        connection_dict = sqlalchemy.engine.url.make_url(sql_connection)
+        password = connection_dict.password or ''
+        conn_args = {
+            'db': connection_dict.database,
+            'passwd': password,
+            'host': connection_dict.host,
+            'user': connection_dict.username,
+            'client_flag': mysql_client_constants.FOUND_ROWS}
+
+        print "connecting"
+        conn = MySQLdb.connect(**conn_args)
+        print "done connecting"
+        self.num_conns += 1
+        return conn
+
+    def get(self):
+        try:
+            return self.conns_available.pop()
+        except IndexError:
+            pass
+        if self.num_conns < self.max_conns:
+            return self._create_conn()
+        assert False
+
+    def put(self, conn):
+        self.conns_available.append(conn)
+
+
+_POOL = ConnPool()
+
 
 @require_context
 def bw_usage_update_mysqldb(context, uuid, mac, start_period, bw_in, bw_out,
                     last_ctr_in, last_ctr_out, last_refreshed=None,
                     session=None):
     # kick this shit raw sql style:
-    conn = _connect()
-
+    conn = _POOL.get()
     cursor = conn.cursor()
 
-    def _datestr(dt):
-        return dt.strftime('%Y-%m-%d %H:%M:%S')
+    try:
 
-    sql = """UPDATE bw_usage_cache SET bw_in=%s, bw_out=%s, last_ctr_in=%s, last_ctr_out=%s
-             WHERE bw_usage_cache.start_period = %s AND
-                bw_usage_cache.uuid = %s AND bw_usage_cache.mac = %s"""
+        def _datestr(dt):
+            return dt.strftime('%Y-%m-%d %H:%M:%S')
 
-    args = (bw_in, bw_out, last_ctr_in, last_ctr_out, _datestr(start_period), uuid, mac)
-    num_rows_affected = cursor.execute(sql, args)
-#    conn.close()
+        sql = """UPDATE bw_usage_cache SET bw_in=%s, bw_out=%s, last_ctr_in=%s, last_ctr_out=%s
+                 WHERE bw_usage_cache.start_period = %s AND
+                    bw_usage_cache.uuid = %s AND bw_usage_cache.mac = %s"""
 
-    if num_rows_affected > 0:
-        conn.close()
-        return
+        args = (bw_in, bw_out, last_ctr_in, last_ctr_out, _datestr(start_period), uuid, mac)
+        num_rows_affected = cursor.execute(sql, args)
 
-    # get a new connection 
-#    conn = _connect()
-#    cursor = conn.cursor()
+        if num_rows_affected > 0:
+            return
 
-    sql = """INSERT INTO bw_usage_cache
-            (created_at, updated_at, deleted_at, deleted, uuid, mac,
-             start_period, last_refreshed, bw_in, bw_out, last_ctr_in, last_ctr_out) VALUES
-            (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
+        conn.commit()
+        cursor.close()
+        cursor = conn.cursor()
 
-    args = (_datestr(datetime.datetime.utcnow()), None, None, 0, uuid, mac,
-            _datestr(start_period), None, bw_in, bw_out, last_ctr_in,
-            last_ctr_out)
+        sql = """INSERT INTO bw_usage_cache
+                (created_at, updated_at, deleted_at, deleted, uuid, mac,
+                 start_period, last_refreshed, bw_in, bw_out, last_ctr_in, last_ctr_out) VALUES
+                (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s)"""
 
-    cursor.execute(sql, args)
-    conn.close()
+        args = (_datestr(datetime.datetime.utcnow()), None, None, 0, uuid, mac,
+                _datestr(start_period), None, bw_in, bw_out, last_ctr_in,
+                last_ctr_out)
+        cursor.execute(sql, args)
+    finally:
+        cursor.close()
+        try:
+            conn.commit()
+        except Exception:
+            pass
+        _POOL.put(conn)
 
 
 bw_usage_update = bw_usage_update_mysqldb
