@@ -244,7 +244,6 @@ import os.path
 import re
 import time
 
-from eventlet import db_pool
 from eventlet import greenthread
 from sqlalchemy.exc import DisconnectionError, OperationalError, IntegrityError
 import sqlalchemy.interfaces
@@ -278,10 +277,6 @@ sql_opts = [
     cfg.BoolOpt('sqlite_synchronous',
                 default=True,
                 help='If passed, use synchronous mode for sqlite'),
-    cfg.IntOpt('sql_min_pool_size',
-               default=1,
-               help='Minimum number of SQL connections to keep open in a '
-                    'pool'),
     cfg.IntOpt('sql_max_pool_size',
                default=5,
                help='Maximum number of SQL connections to keep open in a '
@@ -303,9 +298,6 @@ sql_opts = [
     cfg.BoolOpt('sql_connection_trace',
                 default=False,
                 help='Add python stack traces to SQL as comment strings'),
-    cfg.BoolOpt('sql_dbpool_enable',
-                default=False,
-                help="enable the use of eventlet's db_pool for MySQL"),
 ]
 
 CONF = cfg.CONF
@@ -517,33 +509,6 @@ def create_engine(sql_connection):
         if CONF.sql_connection == "sqlite://":
             engine_args["poolclass"] = StaticPool
             engine_args["connect_args"] = {'check_same_thread': False}
-    elif all((CONF.sql_dbpool_enable, MySQLdb,
-              "mysql" in connection_dict.drivername)):
-        LOG.info(_("Using mysql/eventlet db_pool."))
-        # MySQLdb won't accept 'None' in the password field
-        password = connection_dict.password or ''
-        pool_args = {
-            'db': connection_dict.database,
-            'passwd': password,
-            'host': connection_dict.host,
-            'user': connection_dict.username,
-            'min_size': CONF.sql_min_pool_size,
-            'max_size': CONF.sql_max_pool_size,
-            'max_idle': CONF.sql_idle_timeout,
-            'client_flag': mysql_client_constants.FOUND_ROWS}
-
-        pool = db_pool.ConnectionPool(MySQLdb, **pool_args)
-
-        def creator():
-            conn = pool.create()
-            if isinstance(conn, tuple):
-                # NOTE(belliott) eventlet >= 0.10 returns a tuple
-                now, now, conn = conn
-
-            return conn
-
-        engine_args['creator'] = creator
-
     else:
         engine_args['pool_size'] = CONF.sql_max_pool_size
         if CONF.sql_max_overflow is not None:
