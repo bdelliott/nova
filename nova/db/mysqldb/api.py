@@ -23,7 +23,7 @@ here.
 """
 import datetime
 
-from nova.db import decorators
+from nova.db import utils as dbutils
 from nova.db.mysqldb import connection
 from nova.db.sqlalchemy import api as sqlalchemy_api
 from nova import exception
@@ -107,7 +107,7 @@ class API(object):
         import pprint
         pprint.pprint(result, indent=4)
 
-    @decorators.require_context
+    @dbutils.require_context
     def instance_update(self, context, instance_uuid, values):
         instance_ref = self._instance_update(context, instance_uuid, values)[1]
         return instance_ref
@@ -116,7 +116,7 @@ class API(object):
         # forward unimplemented method to sqlalchemy backend:
         return getattr(sqlalchemy_api, key)
 
-    @decorators.require_context
+    @dbutils.require_context
     def bw_usage_update(self, context, uuid, mac, start_period, bw_in, bw_out,
                         last_ctr_in, last_ctr_out, last_refreshed=None):
         # kick this shit raw sql style:
