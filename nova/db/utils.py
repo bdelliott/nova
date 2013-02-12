@@ -33,8 +33,25 @@ def _is_context_like(obj):
     return True
 
 
+def check_task_state(instance_ref, values):
+    """If "expected_task_state" exists in values, the update can only happen
+    when the task state before update matches expected_task_state. Otherwise
+    a UnexpectedTaskStateError is thrown.
+    """
+
+    if "expected_task_state" in values:
+        # it is not a db column so always pop out
+        expected = values.pop("expected_task_state")
+        if not isinstance(expected, (tuple, list, set)):
+            expected = (expected,)
+        actual_state = instance_ref["task_state"]
+        if actual_state not in expected:
+            raise exception.UnexpectedTaskStateError(actual=actual_state,
+                                                     expected=expected)
+
+
 def is_user_context(context):
-        """Indicates if the request context is a normal user."""
+    """Indicates if the request context is a normal user."""
     if not context:
         return False
     if context.is_admin:

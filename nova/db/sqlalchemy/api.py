@@ -1812,15 +1812,7 @@ def _instance_update(context, instance_uuid, values, copy_old_instance=False):
         else:
             instance_ref['extra_specs'] = {}
 
-        if "expected_task_state" in values:
-            # it is not a db column so always pop out
-            expected = values.pop("expected_task_state")
-            if not isinstance(expected, (tuple, list, set)):
-                expected = (expected,)
-            actual_state = instance_ref["task_state"]
-            if actual_state not in expected:
-                raise exception.UnexpectedTaskStateError(actual=actual_state,
-                                                         expected=expected)
+        dbutils.check_task_state(instance_ref, values)
 
         if ("hostname" in values and
             values["hostname"].lower() != instance_ref["hostname"].lower()):

@@ -29,15 +29,13 @@ from nova.db.sqlalchemy import api as sqlalchemy_api
 from nova import exception
 from nova.openstack.common import uuidutils
 
-is_user_context = sqlalchemy_api.is_user_context
-
 
 class API(object):
 
     def __init__(self):
         self.pool = connection.ConnectionPool()
 
-    def _instance_get_by_uuid(self, context, uuid, cursor):
+    def _instance_get_by_uuid(self, context, uuid, conn):
 
         # TODO full impl of the read_deleted feature
         read_deleted = context.read_deleted == 'yes'
@@ -59,9 +57,9 @@ class API(object):
             WHERE instances.uuid = %(uuid)s
               AND instances.deleted = %(deleted)s"""
 
-
         args = {'uuid': uuid,
                 'deleted': read_deleted}
+        cursor = conn.cursor()
         cursor.execute(sql, args)
 
         row = cursor.fetchone()
@@ -74,15 +72,32 @@ class API(object):
     def _instance_update(self, context, instance_uuid, values,
                          copy_old_instance=False):
         with self.pool.get() as conn:
-            cursor = conn.cursor()
-
             if not uuidutils.is_uuid_like(instance_uuid):
                 raise exception.InvalidUUID(instance_uuid)
 
             instance_ref = self._instance_get_by_uuid(context, instance_uuid,
-                                                      cursor)            
-            # TODO do the actual updating, hah!
-            raise Exception("TODO updating")
+                                                      conn)            
+
+            # TODO instance type extra specs
+
+            # confirm actual task state matched the expected value:
+            dbutils.check_task_state(instance_ref, values)
+
+            # TODO hostname validation
+
+            # TODO update metadata
+
+            # TODO update sys metadata
+
+            # TODO update inst type
+
+            where = (('uuid', '=', instance_uuid),)
+            conn.update("instances", values, where)                    
+
+            # get updated record
+            new_instance_ref = self._instance_get_by_uuid(context,
+                    instance_uuid, conn)
+            return instance_ref, new_instance_ref
 
     def _make_sqlalchemy_like_dict(self, row):
         """Make a SQLAlchemy-like dictionary, where each join gets namespaced as
@@ -100,7 +115,6 @@ class API(object):
             else:
                 result[key] = value
             
-        self._pretty_print_result(result)
         return result
 
     def _pretty_print_result(self, result):
