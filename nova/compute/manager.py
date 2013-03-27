@@ -2551,6 +2551,10 @@ class ComputeManager(manager.Manager):
                 for bdm in bdms)):
             bdms = None
 
+        # NOTE(apmelton): We need the original launched_at when we send
+        # the exists later on.
+        orig_launched_at = instance['launched_at']
+
         # This is a grievous hack to make usage happy for the moment
         # We will remove this when their system is fixed. (mdragon)
         if isinstance(instance, dict):
@@ -2613,6 +2617,11 @@ class ComputeManager(manager.Manager):
             #TODO(jaypipes): Move generate_image_url() into the nova.image.api
             orig_image_ref_url = glance.generate_image_url(orig_image_ref)
             extra_usage_info = {'image_ref_url': orig_image_ref_url}
+
+            # Note(apmelton): This exists represents the past state of the
+            # instance, thus it needs the original launched_at so usage can
+            # tell how long it's been around for.
+            extra_usage_info['launched_at'] = orig_launched_at
             self.conductor_api.notify_usage_exists(context,
                     obj_base.obj_to_primitive(instance),
                     current_period=True, system_metadata=orig_sys_metadata,
@@ -3306,16 +3315,16 @@ class ComputeManager(manager.Manager):
                                                      reservations,
                                                      instance=instance)
 
+        # NOTE(comstud): A revert_resize is essentially a resize back to
+        # the old size, so we need to send a usage event here.
+        self.conductor_api.notify_usage_exists(
+                context, instance, current_period=True)
+
         # This is a grievous hack to make usage happy for the moment
         # We will remove this when their system is fixed. (mdragon)
         instance.launched_at = timeutils.utcnow()
         instance.save()
         # Endhack.
-
-        # NOTE(comstud): A revert_resize is essentially a resize back to
-        # the old size, so we need to send a usage event here.
-        self.conductor_api.notify_usage_exists(
-                context, instance, current_period=True)
 
         with self._error_out_instance_on_exception(context, instance['uuid'],
                                                    quotas=quotas):
@@ -3488,14 +3497,15 @@ class ComputeManager(manager.Manager):
                                                      instance=instance)
         with self._error_out_instance_on_exception(context, instance['uuid'],
                                                    quotas=quotas):
+            self.conductor_api.notify_usage_exists(
+                    context, instance, current_period=True)
+
             # This is a grievous hack to make usage happy for the moment
             # We will remove this when their system is fixed. (mdragon)
             instance.launched_at = timeutils.utcnow()
             instance.save()
             # Endhack.
 
-            self.conductor_api.notify_usage_exists(
-                    context, instance, current_period=True)
             self._notify_about_instance_usage(
                     context, instance, "resize.prep.start")
             try:

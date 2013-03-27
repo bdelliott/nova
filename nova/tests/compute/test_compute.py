@@ -4348,6 +4348,7 @@ class ComputeTestCase(BaseTestCase):
 
         fake_notifier.NOTIFICATIONS = []
         instance = db.instance_get_by_uuid(self.context, inst_ref['uuid'])
+        #launched_at = instance["launched_at"]
         orig_sys_metadata = db.instance_system_metadata_get(self.context,
                 inst_ref['uuid'])
         image_ref = instance["image_ref"]
@@ -4380,6 +4381,9 @@ class ComputeTestCase(BaseTestCase):
         self.assertEqual(msg.event_type,
                           'compute.instance.exists')
         self.assertEqual(msg.payload['image_ref_url'], image_ref_url)
+        #exists_launched_at = msg.payload['launched_at']
+        #self.assertEqual(timeutils.normalize_time(exists_launched_at),
+        #                 launched_at)
         msg = fake_notifier.NOTIFICATIONS[1]
         self.assertEqual(msg.event_type,
                           'compute.instance.rebuild.start')
@@ -4441,6 +4445,7 @@ class ComputeTestCase(BaseTestCase):
 
         fake_notifier.NOTIFICATIONS = []
         instance = db.instance_get_by_uuid(self.context, inst_ref['uuid'])
+        #launched_at = instance["launched_at"]
         db.instance_system_metadata_update(self.context, inst_ref['uuid'],
                 {'image_kernel_id': 'old-data',
                  'image_ramdisk_id': 'old_data',
@@ -4487,6 +4492,9 @@ class ComputeTestCase(BaseTestCase):
         msg = fake_notifier.NOTIFICATIONS[0]
         self.assertEqual(msg.event_type,
                          'compute.instance.exists')
+        #exists_launched_at = msg.payload['launched_at']
+        #self.assertEqual(timeutils.normalize_time(exists_launched_at),
+        #                 launched_at)
         self.assertEqual(msg.payload['image_ref_url'], image_ref_url)
         msg = fake_notifier.NOTIFICATIONS[1]
         self.assertEqual(msg.event_type,
@@ -4595,6 +4603,8 @@ class ComputeTestCase(BaseTestCase):
         instance.task_state = task_states.RESIZE_PREP
         instance.save()
 
+        launched_at = instance['launched_at']
+
         instance_type = flavors.get_default_flavor()
         self.compute.prep_resize(self.context, instance=instance,
                 instance_type=instance_type, image={}, reservations=[],
@@ -4607,6 +4617,10 @@ class ComputeTestCase(BaseTestCase):
         msg = fake_notifier.NOTIFICATIONS[0]
         self.assertEqual(msg.event_type,
                          'compute.instance.exists')
+        exists_launched_at = timeutils.parse_isotime(
+                msg.payload['launched_at'])
+        self.assertEqual(timeutils.normalize_time(exists_launched_at),
+                          timeutils.normalize_time(launched_at))
         msg = fake_notifier.NOTIFICATIONS[1]
         self.assertEqual(msg.event_type,
                          'compute.instance.resize.prep.start')
