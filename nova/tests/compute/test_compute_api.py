@@ -987,6 +987,7 @@ class _ComputeAPIUnitTestMixIn(object):
         fake_inst = self._create_instance_obj(params=params)
 
         self.mox.StubOutWithMock(flavors, 'get_flavor_by_flavor_id')
+        self.mox.StubOutWithMock(db, 'flavor_extra_specs_get')
         self.mox.StubOutWithMock(self.compute_api, '_upsize_quota_delta')
         self.mox.StubOutWithMock(self.compute_api, '_reserve_quota_delta')
         self.mox.StubOutWithMock(fake_inst, 'save')
@@ -997,10 +998,12 @@ class _ComputeAPIUnitTestMixIn(object):
         current_flavor = flavors.extract_flavor(fake_inst)
         if flavor_id_passed:
             new_flavor = dict(id=200, flavorid='new-flavor-id',
-                              name='new_flavor', disabled=False)
+                              name='new_flavor', disabled=False,
+                              extra_specs={})
             if same_flavor:
                 cur_flavor = flavors.extract_flavor(fake_inst)
                 new_flavor['id'] = cur_flavor['id']
+
             flavors.get_flavor_by_flavor_id(
                     'new-flavor-id',
                     read_deleted='no').AndReturn(new_flavor)
@@ -1010,6 +1013,10 @@ class _ComputeAPIUnitTestMixIn(object):
         if (self.cell_type == 'compute' or
                 not (flavor_id_passed and same_flavor)):
             resvs = ['resvs']
+            # RAX: flavor class / resize check:
+            db.flavor_extra_specs_get(self.context,
+                    current_flavor['flavorid']).AndReturn({})
+
             project_id, user_id = quotas_obj.ids_from_instance(self.context,
                                                                fake_inst)
             fake_quotas = quotas_obj.Quotas.from_reservations(self.context,
@@ -1119,6 +1126,39 @@ class _ComputeAPIUnitTestMixIn(object):
     def test_migrate_different_project_id(self):
         self._test_migrate(project_id='different')
 
+    def _test_resize_with_flavor_class(self, original_extra_spec={}):
+        instance = self._create_instance_obj()
+        curr_inst_type = flavors.extract_flavor(instance)
+        curr_inst_type['flavorid'] = int(curr_inst_type['flavorid'])
+        next_flavor_id = curr_inst_type['flavorid'] + 1
+        next_flavor = {'name': 'some', 'id': next_flavor_id, 'extra_specs':
+            {'class': 'something'}}
+
+        self.mox.StubOutWithMock(self.compute_api.db,
+                                 'flavor_extra_specs_get')
+        self.compute_api.db.flavor_extra_specs_get(self.context, str(
+            curr_inst_type['flavorid'])).AndReturn(original_extra_spec)
+        self.mox.StubOutWithMock(flavors, 'get_flavor_by_flavor_id')
+        flavors.get_flavor_by_flavor_id(next_flavor_id, read_deleted="no"). \
+            AndReturn(next_flavor)
+        self.mox.ReplayAll()
+
+        self.assertRaises(exception.CannotResizeToDifferentFlavorClass,
+                          self.compute_api.resize, self.context, instance,
+                          flavor_id=next_flavor_id)
+
+    def test_resize_for_instance_without_flavor_class(self):
+        self._test_resize_with_flavor_class()
+
+    def test_resize_for_instance_without_None_flavor_class(self):
+        self._test_resize_with_flavor_class(
+            original_extra_spec={'class': None})
+
+    def test_resize_where_instance_flavor_class_differs_from_next_flavor(
+            self):
+        self._test_resize_with_flavor_class(
+            original_extra_spec={'class': 'different'})
+
     def test_resize_invalid_flavor_fails(self):
         self.mox.StubOutWithMock(flavors, 'get_flavor_by_flavor_id')
         # Should never reach these.
@@ -1166,6 +1206,7 @@ class _ComputeAPIUnitTestMixIn(object):
 
     def test_resize_quota_exceeds_fails(self):
         self.mox.StubOutWithMock(flavors, 'get_flavor_by_flavor_id')
+        self.mox.StubOutWithMock(db, 'flavor_extra_specs_get')
         self.mox.StubOutWithMock(self.compute_api, '_upsize_quota_delta')
         self.mox.StubOutWithMock(self.compute_api, '_reserve_quota_delta')
         # Should never reach these.
@@ -1178,9 +1219,11 @@ class _ComputeAPIUnitTestMixIn(object):
         fake_inst = obj_base.obj_to_primitive(self._create_instance_obj())
         current_flavor = flavors.extract_flavor(fake_inst)
         fake_flavor = dict(id=200, flavorid='flavor-id', name='foo',
-                           disabled=False)
+                           disabled=False, extra_specs={})
         flavors.get_flavor_by_flavor_id(
                 'flavor-id', read_deleted='no').AndReturn(fake_flavor)
+        db.flavor_extra_specs_get(self.context,
+                current_flavor['flavorid']).AndReturn({})
         deltas = dict(resource=0)
         self.compute_api._upsize_quota_delta(
                 self.context, fake_flavor,

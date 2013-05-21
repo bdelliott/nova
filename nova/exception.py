@@ -1096,6 +1096,10 @@ class CannotResizeToSameFlavor(NovaException):
     msg_fmt = _("When resizing, instances must change flavor!")
 
 
+class CannotResizeToDifferentFlavorClass(NovaException):
+    msg_fmt = _("Resizing to a different flavor class is not allowed.")
+
+
 class ResizeError(NovaException):
     msg_fmt = _("Resize error: %(reason)s")
 

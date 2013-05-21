@@ -1173,6 +1173,9 @@ class Controller(wsgi.Controller):
         except exception.CannotResizeToSameFlavor:
             msg = _("Resize requires a flavor change.")
             raise exc.HTTPBadRequest(explanation=msg)
+        except exception.CannotResizeToDifferentFlavorClass:
+            msg = _("Cannot resize between flavor classes.")
+            raise exc.HTTPBadRequest(explanation=msg)
         except exception.InstanceIsLocked as e:
             raise exc.HTTPConflict(explanation=e.format_message())
         except exception.InstanceInvalidState as state_error:

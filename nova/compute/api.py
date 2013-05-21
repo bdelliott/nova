@@ -2424,6 +2424,19 @@ class API(base.Base):
         if not same_instance_type and new_instance_type.get('disabled'):
             raise exception.FlavorNotFound(flavor_id=flavor_id)
 
+        # NOTE(comstud): RAX specific code for flavor classes.
+        # Disallow resize between different flavor classes.
+        if not same_instance_type:
+            # Unfortunately the current extra_specs are not stored in
+            # system_metadata on the instance, so we have to try to pull
+            # them.  The DB call returns an empty dict if none are found.
+            current_extra_specs = self.db.flavor_extra_specs_get(
+                    context, current_instance_type['flavorid'])
+            current_flavor_class = current_extra_specs.get('class')
+            new_flavor_class = new_instance_type['extra_specs'].get('class')
+            if new_flavor_class != current_flavor_class:
+                raise exception.CannotResizeToDifferentFlavorClass()
+
         if same_instance_type and flavor_id and self.cell_type != 'compute':
             raise exception.CannotResizeToSameFlavor()
 
