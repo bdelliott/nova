@@ -3180,6 +3180,14 @@ class API(base.Base):
             self.compute_rpcapi.external_instance_event(
                 context, instances_by_host[host], events_by_host[host])
 
+    @check_instance_lock
+    @wrap_check_policy
+    def update_migration(self, context, instance, args):
+        Migration = migration_obj.Migration
+        migration = Migration.get_by_instance(context, instance['uuid'])
+        migration.update(args)
+        migration.save()
+
 
 class HostAPI(base.Base):
     """Sub-set of the Compute Manager API for managing host operations."""

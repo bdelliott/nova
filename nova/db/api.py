@@ -479,9 +479,14 @@ def migration_get(context, migration_id):
 
 
 def migration_get_by_instance_and_status(context, instance_uuid, status):
-    """Finds a migration by the instance uuid its migrating."""
+    """Finds a migration by the instance uuid its migrating and vm status."""
     return IMPL.migration_get_by_instance_and_status(context, instance_uuid,
-            status)
+                                                     status)
+
+
+def migration_get_by_instance(context, instance_uuid):
+    """Finds a migration by the instance uuid its migrating."""
+    return IMPL.migration_get_by_instance(context, instance_uuid)
 
 
 def migration_get_unconfirmed_by_dest_compute(context, confirm_window,

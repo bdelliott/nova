@@ -113,6 +113,14 @@
             "updated": "2011-09-20T00:00:00Z"
         },
         {
+            "alias": "os-migration-reset",
+            "description": "Reset the migration status.",
+            "links": [],
+            "name": "MigrationReset",
+            "namespace": "http://docs.openstack.org/compute/ext/migration-reset/api/v2.0",
+            "updated": "2013-06-13T00:00:00Z"
+        },
+        {
             "alias": "os-agents",
             "description": "Agents support.",
             "links": [],

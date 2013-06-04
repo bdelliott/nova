@@ -54,6 +54,9 @@
   <extension alias="os-availability-zone" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/availabilityzone/api/v1.1" name="AvailabilityZone">
     <description>%(text)s</description>
   </extension>
+  <extension alias="os-migration-reset" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/migration-reset/api/v2.0" name="MigrationReset">
+    <description>%(text)s</description>
+  </extension>
   <extension alias="os-agents" name="Agents" namespace="http://docs.openstack.org/compute/ext/agents/api/v2" updated="%(isotime)s">
     <description>%(text)s</description>
   </extension>

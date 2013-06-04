@@ -9237,6 +9237,37 @@ class ComputeAPITestCase(BaseTestCase):
 
         db.instance_destroy(self.context, instance['uuid'])
 
+    def _test_update_migration(self, context, instance, args):
+        migration_args = {'instance_uuid': instance['uuid'],
+                          'status': 'error'}
+        db.migration_create(context, migration_args)
+        self.compute_api.update_migration(context, instance,
+                                          {'status': 'finished'})
+
+        migration = db.migration_get_by_instance(context, instance["uuid"])
+        self.assertEqual(migration['status'], 'finished')
+
+    def test_update_migration(self):
+        instance, instance_uuid = self._run_instance()
+        admin_context = context.get_admin_context()
+
+        self._test_update_migration(admin_context, instance,
+                                    {'status': 'finished'})
+
+    def test_update_migration_requires_admin_role(self):
+        rules = {"compute:update_migrations": "is_admin:true"}
+        self.policy.set_rules(rules)
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.compute_api.update_migration, self.context,
+                          {"uuid": "instance_uuid", "locked": False}, {})
+
+    def test_should_not_update_migration_for_locked_instance(self):
+        instance = {'uuid': 'instance_uuid',
+                    'locked': True}
+        self.assertRaises(exception.InstanceIsLocked,
+                          self.compute_api.update_migration, self.context,
+                          instance, {})
+
     def test_fail_evacuate_from_non_existing_host(self):
         inst = {}
         inst['vm_state'] = vm_states.ACTIVE

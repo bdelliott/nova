@@ -512,6 +512,11 @@ class ComputeCellsAPI(compute_api.API):
                             'update_instance_system_metadata',
                             metadata, delete=delete)
 
+    @check_instance_cell
+    def update_migration(self, context, instance, args):
+        super(ComputeCellsAPI, self).update_migration(context, instance, args)
+        self._call_to_cells(context, instance, 'update_migration', args)
+
 
 class ServiceProxy(object):
     def __init__(self, obj, cell_path):

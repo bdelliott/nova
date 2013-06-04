@@ -2106,6 +2106,38 @@ class AdminActionsSamplesXmlTest(AdminActionsSamplesJsonTest):
     ctype = 'xml'
 
 
+class MigrationResetJsonTest(ServersSampleBase):
+    extension_name = ("nova.api.openstack.compute.contrib."
+                      "migration_reset.Migration_reset")
+
+    def setUp(self):
+        super(MigrationResetJsonTest, self).setUp()
+        self.uuid = self._post_server()
+
+    def test_migration_reset_state(self):
+        self.flags(allow_resize_to_same_host=True)
+        subs = {"id": 2, "host": self._get_host(), "action": "resize"}
+
+        self._do_post('servers/%s/action' % self.uuid,
+                    'server-action-resize',
+                    subs)
+        admin_context = context.get_admin_context()
+        migration_ref = db.migration_get_by_instance(admin_context, self.uuid)
+        db.migration_update(admin_context, migration_ref['id'],
+                            {'status': 'error'})
+
+        response = self._do_post('os-migration-reset/reset_state',
+                                'migration-reset',
+                                {"uuid": self.uuid, "state": "finished"})
+        self.assertEqual(response.status, 202)
+        migration = db.migration_get_by_instance(admin_context, self.uuid)
+        self.assertEqual("finished", migration["status"])
+
+
+class MigrationResetXmlTest(MigrationResetJsonTest):
+    ctype = 'xml'
+
+
 class ConsolesSampleJsonTests(ServersSampleBase):
     extension_name = ("nova.api.openstack.compute.contrib"
                                      ".consoles.Consoles")

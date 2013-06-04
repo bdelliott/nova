@@ -23,6 +23,7 @@ from oslo.config import cfg
 from nova.cells import manager
 from nova.compute import api as compute_api
 from nova.compute import cells_api as compute_cells_api
+from nova import context
 from nova import db
 from nova.openstack.common import jsonutils
 from nova import quota
@@ -217,6 +218,27 @@ class CellsComputeAPITestCase(test_compute.ComputeAPITestCase):
 
         # one targeted message should have been created
         self.assertEqual(1, mock_msg.call_count)
+
+    def test_update_migration(self):
+        instance, instance_uuid = self._run_instance()
+        admin_context = context.get_admin_context()
+        args = {'status': 'finished'}
+        self.mox.StubOutWithMock(self.compute_api, "_call_to_cells")
+        self.compute_api._call_to_cells(admin_context, instance,
+                                        'update_migration', args)
+        self.mox.ReplayAll()
+
+        self._test_update_migration(admin_context, instance, args)
+
+    def test_update_migration_should_validate_cell(self):
+        instance, instance_uuid = self._run_instance()
+        admin_context = context.get_admin_context()
+        self.mox.StubOutWithMock(self.compute_api, "_validate_cell")
+        self.compute_api._validate_cell(instance, 'update_migration')
+        self.mox.ReplayAll()
+
+        self._test_update_migration(admin_context, instance,
+                                          {'status': 'finished'})
 
 
 class CellsComputePolicyTestCase(test_compute.ComputePolicyTestCase):

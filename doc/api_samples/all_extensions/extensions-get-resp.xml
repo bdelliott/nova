@@ -46,6 +46,9 @@
     resetNetwork, injectNetworkInfo, lock, unlock, createBackup
     </description>
   </extension>
+  <extension alias="os-migration-reset" updated="2013-06-13T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/migration-reset/api/v2.0" name="MigrationReset">
+    <description>Reset the migration status.</description>
+  </extension>
   <extension alias="os-agents" updated="2012-10-28T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/agents/api/v2" name="Agents">
     <description>Agents support.</description>
   </extension>

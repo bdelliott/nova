@@ -95,6 +95,7 @@ policy_data = """
     "compute:force_delete": "",
     "compute:restore": "",
     "compute:swap_volume": "",
+    "compute:update_migration":"",
 
     "compute:volume_snapshot_create": "",
     "compute:volume_snapshot_delete": "",
@@ -295,6 +296,7 @@ policy_data = """
     "compute_extension:v3:os-availability-zone:detail": "is_admin:True",
     "compute_extension:used_limits_for_admin": "is_admin:True",
     "compute_extension:migrations:index": "is_admin:True",
+    "compute_extension:migration_reset": "is_admin:True",
     "compute_extension:v3:os-migrations:index": "is_admin:True",
     "compute_extension:os-assisted-volume-snapshots:create": "",
     "compute_extension:os-assisted-volume-snapshots:delete": "",

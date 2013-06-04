@@ -891,7 +891,7 @@ object_data = {
     'InstanceList': '1.6-086b5de1c23af9e023fa10dd2e8c6a69',
     'KeyPair': '1.1-30e67207cd4d0a3a044b5805f252a60c',
     'KeyPairList': '1.0-ab564b050224c1945febb24ce84c9524',
-    'Migration': '1.1-c90e531ec87739decb31026c05100964',
+    'Migration': '1.1-71dd37907d6529129d346effa88f9462',
     'MigrationList': '1.1-add1d472f38ee759f9d717b9824e07a4',
     'MyObj': '1.6-f441a9b820e323c45b92d66d2f9ebbf2',
     'Network': '1.1-faba26d0290395456f9a040584c4364b',

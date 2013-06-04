@@ -129,6 +129,14 @@
             "updated": "%(isotime)s"
         },
         {
+            "alias": "os-migration-reset",
+            "description": "%(text)s",
+            "links": [],
+            "name": "MigrationReset",
+            "namespace": "http://docs.openstack.org/compute/ext/migration-reset/api/v2.0",
+            "updated": "%(isotime)s"
+        },
+        {
             "alias": "os-aggregates",
             "description": "%(text)s",
             "links": [],

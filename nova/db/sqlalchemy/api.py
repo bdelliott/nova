@@ -4069,6 +4069,19 @@ def migration_get_by_instance_and_status(context, instance_uuid, status):
 
 
 @require_admin_context
+def migration_get_by_instance(context, instance_uuid):
+    result = model_query(context, models.Migration, read_deleted="yes").\
+                     filter_by(instance_uuid=instance_uuid).\
+                     order_by(desc(models.Migration.id)).\
+                     first()
+
+    if not result:
+        raise exception.MigrationNotFoundForInstance(instance_id=instance_uuid)
+
+    return result
+
+
+@require_admin_context
 def migration_get_unconfirmed_by_dest_compute(context, confirm_window,
                                               dest_compute, use_slave=False):
     confirm_window = (timeutils.utcnow() -

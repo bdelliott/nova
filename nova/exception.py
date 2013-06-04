@@ -898,6 +898,10 @@ class MigrationNotFoundByStatus(MigrationNotFound):
                 "with status %(status)s.")
 
 
+class MigrationNotFoundForInstance(MigrationNotFound):
+    msg_fmt = _("Migration not found for instance %(instance_id)s")
+
+
 class ConsolePoolNotFound(NotFound):
     msg_fmt = _("Console pool %(pool_id)s could not be found.")
 

@@ -51,6 +51,11 @@ class Migration(base.NovaPersistentObject, base.NovaObject):
         return cls._from_db_object(context, cls(), db_migration)
 
     @base.remotable_classmethod
+    def get_by_instance(cls, context, instance_uuid):
+        db_migration = db.migration_get_by_instance(context, instance_uuid)
+        return cls._from_db_object(context, cls(), db_migration)
+
+    @base.remotable_classmethod
     def get_by_instance_and_status(cls, context, instance_uuid, status):
         db_migration = db.migration_get_by_instance_and_status(
             context, instance_uuid, status)
