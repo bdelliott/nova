@@ -219,6 +219,7 @@ class FetchVhdImageTestCase(test.TestCase):
         self.mox.StubOutWithMock(vm_utils, 'get_sr_path')
         self.mox.StubOutWithMock(vm_utils, '_image_uses_bittorrent')
         self.mox.StubOutWithMock(vm_utils, '_add_bittorrent_params')
+        self.mox.StubOutWithMock(vm_utils, '_add_torrent_url')
         self.mox.StubOutWithMock(vm_utils, '_generate_glance_callback')
         self.mox.StubOutWithMock(vm_utils,
             '_fetch_using_dom0_plugin_with_retry')
@@ -236,14 +237,15 @@ class FetchVhdImageTestCase(test.TestCase):
         self.sr_path = "sr_path"
         self.params = {'image_id': self.image_id,
             'uuid_stack': self.uuid_stack, 'sr_path': self.sr_path}
-        if uses_bittorrent:
-            self.params['torrent_url'] = "%s.torrent" % self.image_id
         self.vdis = {'root': {'uuid': 'vdi'}}
 
         vm_utils._make_uuid_stack().AndReturn(self.uuid_stack)
         vm_utils.get_sr_path(self.session).AndReturn(self.sr_path)
         vm_utils._image_uses_bittorrent(self.context,
             self.instance).AndReturn(uses_bittorrent)
+        if uses_bittorrent:
+            vm_utils._add_torrent_url(self.instance, self.image_id,
+                    self.params).AndReturn(True)
 
     def test_fetch_vhd_image_works_with_glance(self):
         self._apply_stubouts()
