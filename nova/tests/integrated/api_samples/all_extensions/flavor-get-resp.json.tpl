@@ -2,6 +2,7 @@
     "flavor": {
         "OS-FLV-DISABLED:disabled": false,
         "OS-FLV-EXT-DATA:ephemeral": 0,
+        "OS-FLV-WITH-EXT-SPECS:extra_specs": {},
         "disk": 1,
         "id": "1",
         "links": [

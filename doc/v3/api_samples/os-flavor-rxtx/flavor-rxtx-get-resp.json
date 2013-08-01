@@ -4,6 +4,7 @@
         "disk": 1,
         "ephemeral": 0,
         "flavor-access:is_public": true,
+        "flavor-extra-specs:extra_specs": {},
         "id": "1",
         "links": [
             {

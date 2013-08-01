@@ -14,6 +14,7 @@
         ],
         "name": "m1.tiny",
         "flavor-access:is_public": true,
+        "flavor-extra-specs:extra_specs": {},
         "ram": 512,
         "vcpus": 1,
         "disabled": false,

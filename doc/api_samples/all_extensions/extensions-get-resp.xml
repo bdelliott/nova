@@ -285,4 +285,7 @@
   <extension alias="rax-si-image-schedule" updated="2013-03-20T00:00:00Z" namespace="http://docs.openstack.org/servers/api/ext/scheduled_images/v1.0" name="ScheduledImages">
     <description>Enables automatic scheduled images to be taken of a server.</description>
   </extension>
+  <extension alias="OS-FLV-WITH-EXT-SPECS" updated="2013-08-01T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/flavor_with_extra_specs/api/v2.0" name="FlavorWithExtraSpecs">
+    <description>Provide extra specs along with flavor data.</description>
+  </extension>
 </extensions>

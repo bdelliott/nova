@@ -711,6 +711,14 @@
             "name": "Volumes",
             "namespace": "http://docs.openstack.org/compute/ext/volumes/api/v1.1",
             "updated": "2011-03-25T00:00:00Z"
+        },
+        {
+            "alias": "OS-FLV-WITH-EXT-SPECS",
+            "description": "Provide extra specs along with flavor data.",
+            "links": [],
+            "name": "FlavorWithExtraSpecs",
+            "namespace": "http://docs.openstack.org/compute/ext/flavor_with_extra_specs/api/v2.0",
+            "updated": "2013-08-01T00:00:00Z"
         }
     ]
 }

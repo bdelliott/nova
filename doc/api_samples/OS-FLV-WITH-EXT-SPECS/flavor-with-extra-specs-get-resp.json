@@ -1,9 +1,7 @@
 {
     "flavor": {
-        "OS-FLV-DISABLED:disabled": false,
-        "OS-FLV-EXT-DATA:ephemeral": 0,
-        "OS-FLV-WITH-EXT-SPECS:extra_specs": {},
-        "disk": 1,
+        "OS-FLV-WITH-EXT-SPECS:extra_specs": {"key1":"value1", "key2":"value2"},
+        "disk": "1",
         "id": "1",
         "links": [
             {
@@ -16,10 +14,7 @@
             }
         ],
         "name": "m1.tiny",
-        "os-flavor-access:is_public": true,
-        "ram": 512,
-        "rxtx_factor": 1.0,
-        "swap": "",
-        "vcpus": 1
+        "ram": "512",
+        "vcpus": "1"
     }
 }

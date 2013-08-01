@@ -337,6 +337,14 @@
             "updated": "%(isotime)s"
         },
         {
+            "alias": "OS-FLV-WITH-EXT-SPECS",
+            "description": "%(text)s",
+            "links": [],
+            "name": "FlavorWithExtraSpecs",
+            "namespace": "http://docs.openstack.org/compute/ext/flavor_with_extra_specs/api/v2.0",
+            "updated": "%(isotime)s"
+        },
+        {
             "alias": "os-floating-ip-dns",
             "description": "%(text)s",
             "links": [],

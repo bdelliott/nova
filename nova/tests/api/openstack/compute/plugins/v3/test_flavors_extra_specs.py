@@ -12,14 +12,17 @@
 #    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
 #    License for the specific language governing permissions and limitations
 #    under the License.
+import datetime
 
 import mock
 import webob
 
 from nova.api.openstack.compute.plugins.v3 import flavors_extraspecs
+from nova.compute import flavors
 import nova.db
 from nova import exception
 from nova.openstack.common.db import exception as db_exc
+from nova.openstack.common import jsonutils
 from nova import test
 from nova.tests.api.openstack import fakes
 
@@ -52,6 +55,33 @@ def stub_flavor_extra_specs():
             "key4": "value4",
             "key5": "value5"}
     return specs
+
+
+def fake_get_flavor_by_flavor_id(flavorid, ctxt=None):
+    return {
+        'id': flavorid,
+        'flavorid': str(flavorid),
+        'root_gb': 1,
+        'ephemeral_gb': 1,
+        'name': u'test',
+        'deleted': False,
+        'created_at': datetime.datetime(2012, 1, 1, 1, 1, 1, 1),
+        'updated_at': None,
+        'memory_mb': 512,
+        'vcpus': 1,
+        'deleted_at': None,
+        'vcpu_weight': None,
+        'swap': 0,
+        'disabled': False
+    }
+
+
+def fake_get_all_flavors_sorted_list(context, filters, sort_key, sort_dir,
+                                     limit, marker):
+    return [
+        fake_get_flavor_by_flavor_id(1),
+        fake_get_flavor_by_flavor_id(2)
+    ]
 
 
 class FlavorsExtraSpecsTest(test.TestCase):
@@ -285,3 +315,69 @@ class FlavorsExtraSpecsTest(test.TestCase):
                                      use_admin_context=True)
         self.assertRaises(webob.exc.HTTPConflict, self.controller.update,
                           req, 1, 'key1', body)
+
+
+class FlavorWithExtraSpecsTest(test.TestCase):
+    def setUp(self):
+        super(FlavorWithExtraSpecsTest, self).setUp()
+        self.stubs.Set(flavors, 'get_flavor_by_flavor_id',
+                       fake_get_flavor_by_flavor_id)
+        self.stubs.Set(flavors, 'get_all_flavors_sorted_list',
+                       fake_get_all_flavors_sorted_list)
+        self.stubs.Set(nova.db, 'flavor_extra_specs_get',
+                       return_flavor_extra_specs)
+
+    def _get_flavor(self, body):
+        return jsonutils.loads(body).get('flavor')
+
+    def _get_flavors(self, body):
+        return jsonutils.loads(body).get('flavors')
+
+    def _verify_flavor_response(self, flavor, expected):
+        for key in expected:
+            self.assertEqual(flavor[key], expected[key])
+
+    def test_show_me(self):
+        expected = {
+            'id': '1',
+            'name': 'test',
+            'ram': 512,
+            'vcpus': 1,
+            'disk': 1,
+            'flavor-extra-specs:extra_specs': stub_flavor_extra_specs(),
+        }
+
+        url = '/v3/flavors/1'
+        req = webob.Request.blank(url)
+        req.headers['Content-Type'] = 'application/json'
+        app = fakes.wsgi_app_v3(init_only=('flavors', 'flavor-extra-specs'))
+        res = req.get_response(app)
+        self._verify_flavor_response(self._get_flavor(res.body), expected)
+
+    def test_detail(self):
+        expected = [
+            {
+                'id': '1',
+                'name': 'test',
+                'ram': 512,
+                'vcpus': 1,
+                'disk': 1,
+                'flavor-extra-specs:extra_specs': stub_flavor_extra_specs(),
+            },
+            {
+                'id': '2',
+                'name': 'test',
+                'ram': 512,
+                'vcpus': 1,
+                'disk': 1,
+                'flavor-extra-specs:extra_specs': stub_flavor_extra_specs(),
+            },
+        ]
+
+        url = '/v3/flavors/detail'
+        req = webob.Request.blank(url)
+        req.headers['Content-Type'] = 'application/json'
+        app = fakes.wsgi_app_v3(init_only=('flavors', 'flavor-extra-specs'))
+        res = req.get_response(app)
+        for i, flavor in enumerate(self._get_flavors(res.body)):
+            self._verify_flavor_response(flavor, expected[i])

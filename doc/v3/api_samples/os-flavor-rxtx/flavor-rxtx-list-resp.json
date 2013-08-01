@@ -5,6 +5,7 @@
             "disk": 1,
             "ephemeral": 0,
             "flavor-access:is_public": true,
+            "flavor-extra-specs:extra_specs": {},
             "id": "1",
             "links": [
                 {
@@ -27,6 +28,7 @@
             "disk": 20,
             "ephemeral": 0,
             "flavor-access:is_public": true,
+            "flavor-extra-specs:extra_specs": {},
             "id": "2",
             "links": [
                 {
@@ -49,6 +51,7 @@
             "disk": 40,
             "ephemeral": 0,
             "flavor-access:is_public": true,
+            "flavor-extra-specs:extra_specs": {},
             "id": "3",
             "links": [
                 {
@@ -71,6 +74,7 @@
             "disk": 80,
             "ephemeral": 0,
             "flavor-access:is_public": true,
+            "flavor-extra-specs:extra_specs": {},
             "id": "4",
             "links": [
                 {
@@ -93,6 +97,7 @@
             "disk": 160,
             "ephemeral": 0,
             "flavor-access:is_public": true,
+            "flavor-extra-specs:extra_specs": {},
             "id": "5",
             "links": [
                 {

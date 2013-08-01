@@ -3210,7 +3210,32 @@ class FlavorExtraSpecsSampleJsonTests(ApiSampleTestBaseV2):
         self.assertEqual(response.read(), '')
 
 
-class FlavorExtraSpecsSampleXmlTests(FlavorExtraSpecsSampleJsonTests):
+class FlavorWithExtraSpecsSampleJsonTests(ApiSampleTestBaseV2):
+    extension_name = ("nova.api.openstack.compute.contrib."
+                      "flavor_with_extra_specs.Flavor_with_extra_specs")
+
+    def _fake_flavor_extra_specs_get(self, *args):
+        return {"key1": "value1", "key2": "value2"}
+
+    def test_flavor_with_extra_specs_get(self):
+        subs = self._get_regexes()
+        self.stubs.Set(db, 'flavor_extra_specs_get',
+                       self._fake_flavor_extra_specs_get)
+
+        response = self._do_get('flavors/1')
+        self._verify_response('flavor-with-extra-specs-get-resp', subs,
+                              response, 200)
+
+    def test_flavor_with_extra_specs_list(self):
+        subs = self._get_regexes()
+        self.stubs.Set(db, 'flavor_extra_specs_get',
+                       self._fake_flavor_extra_specs_get)
+        response = self._do_get('flavors/detail')
+        self._verify_response('flavor-with-extra-specs-list-resp', subs,
+                              response, 200)
+
+
+class FlavorWithExtraSpecsSampleXmlTests(FlavorWithExtraSpecsSampleJsonTests):
     ctype = 'xml'
 
 

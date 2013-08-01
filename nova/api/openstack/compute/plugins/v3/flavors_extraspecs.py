@@ -28,8 +28,8 @@ class FlavorExtraSpecsController(object):
     """The flavor extra specs API controller for the OpenStack API."""
     ALIAS = 'flavor-extra-specs'
 
-    def __init__(self, *args, **kwargs):
-        super(FlavorExtraSpecsController, self).__init__(*args, **kwargs)
+    def __init__(self):
+        super(FlavorExtraSpecsController, self).__init__()
         self.authorize = extensions.extension_authorizer('compute',
                                                          'v3:' + self.ALIAS)
 
@@ -120,6 +120,37 @@ class FlavorExtraSpecsController(object):
             raise webob.exc.HTTPNotFound(explanation=e.format_message())
 
 
+class FlavorWithExtraSpecsController(wsgi.Controller):
+
+    def __init__(self):
+        super(FlavorWithExtraSpecsController, self).__init__()
+        self.soft_authorize = extensions.soft_extension_authorizer(
+            'compute',
+            'v3:' + FlavorExtraSpecsController.ALIAS)
+
+    def _extend_flavor(self, req, flavor):
+        extra_specs = db.flavor_extra_specs_get(req.environ['nova.context'],
+                                                flavor['id'])
+        key = "%s:extra_specs" % FlavorsExtraSpecs.alias
+        flavor[key] = extra_specs
+
+    def _extend_flavors(self, req, flavors):
+        for flavor in flavors:
+            self._extend_flavor(req, flavor)
+
+    @wsgi.extends
+    def show(self, req, resp_obj, id):
+        if not self.soft_authorize(req.environ['nova.context']):
+            return
+        self._extend_flavor(req, resp_obj.obj['flavor'])
+
+    @wsgi.extends
+    def detail(self, req, resp_obj):
+        if not self.soft_authorize(req.environ['nova.context']):
+            return
+        self._extend_flavors(req, list(resp_obj.obj['flavors']))
+
+
 class FlavorsExtraSpecs(extensions.V3APIExtensionBase):
     """Flavors extra specs support."""
     name = 'FlavorsExtraSpecs'
@@ -135,4 +166,9 @@ class FlavorsExtraSpecs(extensions.V3APIExtensionBase):
         return [extra_specs]
 
     def get_controller_extensions(self):
-        return []
+        extension = extensions.ControllerExtension(
+            self,
+            'flavors',
+            FlavorWithExtraSpecsController())
+
+        return [extension]

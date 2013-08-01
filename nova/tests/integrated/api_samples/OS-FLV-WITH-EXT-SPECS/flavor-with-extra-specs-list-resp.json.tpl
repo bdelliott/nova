@@ -1,113 +1,93 @@
 {
     "flavors": [
         {
-            "disabled": false,
+            "OS-FLV-WITH-EXT-SPECS:extra_specs": {"key1": "%(text)s", "key2": "%(text)s"},
             "disk": 1,
-            "ephemeral": 0,
             "id": "1",
             "links": [
                 {
-                    "href": "%(host)s/v3/flavors/1",
+                    "href": "%(host)s/v2/openstack/flavors/1",
                     "rel": "self"
                 },
                 {
-                    "href": "%(host)s/flavors/1",
+                    "href": "%(host)s/openstack/flavors/1",
                     "rel": "bookmark"
                 }
             ],
             "name": "m1.tiny",
-            "flavor-access:is_public": true,
-            "flavor-extra-specs:extra_specs": {},
             "ram": 512,
-            "swap": 0,
             "vcpus": 1
         },
         {
-            "disabled": false,
+            "OS-FLV-WITH-EXT-SPECS:extra_specs": {"key1": "%(text)s", "key2": "%(text)s"},
             "disk": 20,
-            "ephemeral": 0,
             "id": "2",
             "links": [
                 {
-                    "href": "%(host)s/v3/flavors/2",
+                    "href": "%(host)s/v2/openstack/flavors/2",
                     "rel": "self"
                 },
                 {
-                    "href": "%(host)s/flavors/2",
+                    "href": "%(host)s/openstack/flavors/2",
                     "rel": "bookmark"
                 }
             ],
             "name": "m1.small",
-            "flavor-access:is_public": true,
-            "flavor-extra-specs:extra_specs": {},
             "ram": 2048,
-            "swap": 0,
             "vcpus": 1
         },
         {
-            "disabled": false,
+            "OS-FLV-WITH-EXT-SPECS:extra_specs": {"key1": "%(text)s", "key2": "%(text)s"},
             "disk": 40,
-            "ephemeral": 0,
             "id": "3",
             "links": [
                 {
-                    "href": "%(host)s/v3/flavors/3",
+                    "href": "%(host)s/v2/openstack/flavors/3",
                     "rel": "self"
                 },
                 {
-                    "href": "%(host)s/flavors/3",
+                    "href": "%(host)s/openstack/flavors/3",
                     "rel": "bookmark"
                 }
             ],
             "name": "m1.medium",
-            "flavor-access:is_public": true,
-            "flavor-extra-specs:extra_specs": {},
             "ram": 4096,
-            "swap": 0,
             "vcpus": 2
         },
         {
-            "disabled": false,
+            "OS-FLV-WITH-EXT-SPECS:extra_specs": {"key1": "%(text)s", "key2": "%(text)s"},
             "disk": 80,
-            "ephemeral": 0,
             "id": "4",
             "links": [
                 {
-                    "href": "%(host)s/v3/flavors/4",
+                    "href": "%(host)s/v2/openstack/flavors/4",
                     "rel": "self"
                 },
                 {
-                    "href": "%(host)s/flavors/4",
+                    "href": "%(host)s/openstack/flavors/4",
                     "rel": "bookmark"
                 }
             ],
             "name": "m1.large",
-            "flavor-access:is_public": true,
-            "flavor-extra-specs:extra_specs": {},
             "ram": 8192,
-            "swap": 0,
             "vcpus": 4
         },
         {
-            "disabled": false,
+            "OS-FLV-WITH-EXT-SPECS:extra_specs": {"key1": "%(text)s", "key2": "%(text)s"},
             "disk": 160,
-            "ephemeral": 0,
             "id": "5",
             "links": [
                 {
-                    "href": "%(host)s/v3/flavors/5",
+                    "href": "%(host)s/v2/openstack/flavors/5",
                     "rel": "self"
                 },
                 {
-                    "href": "%(host)s/flavors/5",
+                    "href": "%(host)s/openstack/flavors/5",
                     "rel": "bookmark"
                 }
             ],
             "name": "m1.xlarge",
-            "flavor-access:is_public": true,
-            "flavor-extra-specs:extra_specs": {},
             "ram": 16384,
-            "swap": 0,
             "vcpus": 8
         }
     ]

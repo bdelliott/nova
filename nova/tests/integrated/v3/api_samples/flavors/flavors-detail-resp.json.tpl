@@ -19,7 +19,8 @@
             "flavor-access:is_public": true,
             "ram": 512,
             "swap": 0,
-            "vcpus": 1
+            "vcpus": 1,
+            "flavor-extra-specs:extra_specs": {}
         },
         {
             "disabled": false,
@@ -40,7 +41,8 @@
             "flavor-access:is_public": true,
             "ram": 2048,
             "swap": 0,
-            "vcpus": 1
+            "vcpus": 1,
+            "flavor-extra-specs:extra_specs": {}
         },
         {
             "disabled": false,
@@ -61,7 +63,8 @@
             "flavor-access:is_public": true,
             "ram": 4096,
             "swap": 0,
-            "vcpus": 2
+            "vcpus": 2,
+            "flavor-extra-specs:extra_specs": {}
         },
         {
             "disabled": false,
@@ -82,7 +85,8 @@
             "flavor-access:is_public": true,
             "ram": 8192,
             "swap": 0,
-            "vcpus": 4
+            "vcpus": 4,
+            "flavor-extra-specs:extra_specs": {}
         },
         {
             "disabled": false,
@@ -103,7 +107,8 @@
             "flavor-access:is_public": true,
             "ram": 16384,
             "swap": 0,
-            "vcpus": 8
+            "vcpus": 8,
+            "flavor-extra-specs:extra_specs": {}
         }
     ]
 }

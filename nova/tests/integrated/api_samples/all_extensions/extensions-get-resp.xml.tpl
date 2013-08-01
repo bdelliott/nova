@@ -120,6 +120,9 @@
   <extension alias="os-flavor-swap" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/flavor_swap/api/v1.1" name="FlavorSwap">
     <description>%(text)s</description>
   </extension>
+  <extension alias="OS-FLV-WITH-EXT-SPECS" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/flavor_with_extra_specs/api/v2.0" name="FlavorWithExtraSpecs">
+    <description>%(text)s</description>
+  </extension>
   <extension alias="os-floating-ip-dns" updated="%(isotime)s" namespace="http://docs.openstack.org/ext/floating_ip_dns/api/v1.1" name="FloatingIpDns">
     <description>%(text)s</description>
   </extension>
