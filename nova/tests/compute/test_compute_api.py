@@ -38,8 +38,10 @@ from nova.objects import instance_info_cache
 from nova.objects import migration as migration_obj
 from nova.objects import quotas as quotas_obj
 from nova.objects import service as service_obj
+from nova.openstack.common import policy as common_policy
 from nova.openstack.common import timeutils
 from nova.openstack.common import uuidutils
+from nova import policy
 from nova import quota
 from nova import test
 from nova.tests import fake_block_device
@@ -1010,12 +1012,18 @@ class _ComputeAPIUnitTestMixIn(object):
         else:
             new_flavor = current_flavor
 
+        extra_specs = {}
+        if self.cell_type == 'api':
+            resize_policy_ref = extra_kwargs.get('resize_policy_class')
+            if resize_policy_ref:
+                extra_specs['resize_policy_class'] = resize_policy_ref
+
+        db.flavor_extra_specs_get(self.context,
+                current_flavor['flavorid']).AndReturn(extra_specs)
+
         if (self.cell_type == 'compute' or
                 not (flavor_id_passed and same_flavor)):
             resvs = ['resvs']
-            # RAX: flavor class / resize check:
-            db.flavor_extra_specs_get(self.context,
-                    current_flavor['flavorid']).AndReturn({})
 
             project_id, user_id = quotas_obj.ids_from_instance(self.context,
                                                                fake_inst)
@@ -1111,6 +1119,10 @@ class _ComputeAPIUnitTestMixIn(object):
     def test_resize_different_project_id(self):
         self._test_resize(project_id='different')
 
+    def test_resize_allowed_by_flavor_policy(self):
+        self._test_resize(extra_kwargs=dict(
+            resize_policy_class='compute'))
+
     def test_migrate(self):
         self._test_migrate()
 
@@ -1183,6 +1195,7 @@ class _ComputeAPIUnitTestMixIn(object):
 
     def test_resize_disabled_flavor_fails(self):
         self.mox.StubOutWithMock(flavors, 'get_flavor_by_flavor_id')
+        self.mox.StubOutWithMock(db, 'flavor_extra_specs_get')
         # Should never reach these.
         self.mox.StubOutWithMock(self.compute_api, '_reserve_quota_delta')
         self.mox.StubOutWithMock(self.compute_api, 'update')
@@ -1197,12 +1210,44 @@ class _ComputeAPIUnitTestMixIn(object):
 
         flavors.get_flavor_by_flavor_id(
                 'flavor-id', read_deleted='no').AndReturn(fake_flavor)
+        current_flavor = flavors.extract_flavor(fake_inst)
+        db.flavor_extra_specs_get(self.context,
+                current_flavor['flavorid']).AndReturn({})
 
         self.mox.ReplayAll()
 
         self.assertRaises(exception.FlavorNotFound,
                           self.compute_api.resize, self.context,
                           fake_inst, flavor_id='flavor-id')
+
+    def test_resize_same_flavor_fails(self):
+        self.mox.StubOutWithMock(flavors, 'get_flavor_by_flavor_id')
+        self.mox.StubOutWithMock(db, 'flavor_extra_specs_get')
+        # Should never reach these.
+        self.mox.StubOutWithMock(self.compute_api, '_reserve_quota_delta')
+        self.mox.StubOutWithMock(self.compute_api, 'update')
+        self.mox.StubOutWithMock(quota.QUOTAS, 'commit')
+        self.mox.StubOutWithMock(self.compute_api, '_record_action_start')
+        self.mox.StubOutWithMock(self.compute_api.compute_task_api,
+                                 'resize_instance')
+
+        fake_inst = obj_base.obj_to_primitive(self._create_instance_obj())
+        fake_flavor = flavors.extract_flavor(fake_inst)
+
+        flavors.get_flavor_by_flavor_id(
+                fake_flavor['flavorid'],
+                read_deleted='no').AndReturn(fake_flavor)
+        db.flavor_extra_specs_get(self.context,
+                fake_flavor['flavorid']).AndReturn({})
+        self.compute_api._reserve_quota_delta(self.context, {},
+                project_id=fake_inst['project_id']).AndReturn(None)
+
+        self.mox.ReplayAll()
+
+        # Pass in flavor_id.. same as current flavor.
+        self.assertRaises(exception.CannotResizeToSameFlavor,
+                          self.compute_api.resize, self.context,
+                          fake_inst, flavor_id=fake_flavor['flavorid'])
 
     def test_resize_quota_exceeds_fails(self):
         self.mox.StubOutWithMock(flavors, 'get_flavor_by_flavor_id')
@@ -1248,6 +1293,76 @@ class _ComputeAPIUnitTestMixIn(object):
         self.assertRaises(exception.TooManyInstances,
                           self.compute_api.resize, self.context,
                           fake_inst, flavor_id='flavor-id')
+
+    def test_resize_disallowed_by_flavor_policy(self):
+        #NOTE(alaski): Only applicable at api level
+        if self.cell_type != 'api':
+            return
+
+        self.mox.StubOutWithMock(flavors, 'get_flavor_by_flavor_id')
+        self.mox.StubOutWithMock(db, 'flavor_extra_specs_get')
+        # Should never reach these.
+        self.mox.StubOutWithMock(self.compute_api, '_upsize_quota_delta')
+        self.mox.StubOutWithMock(self.compute_api, '_reserve_quota_delta')
+        self.mox.StubOutWithMock(self.compute_api, 'update')
+        self.mox.StubOutWithMock(quota.QUOTAS, 'commit')
+        self.mox.StubOutWithMock(self.compute_api, '_record_action_start')
+        self.mox.StubOutWithMock(self.compute_api.compute_task_api,
+                                 'resize_instance')
+
+        fake_inst = obj_base.obj_to_primitive(self._create_instance_obj())
+        current_flavor = flavors.extract_flavor(fake_inst)
+        fake_flavor = dict(id=200, flavorid='flavor-id', name='foo',
+                           disabled=False, extra_specs={})
+        flavors.get_flavor_by_flavor_id(
+                'flavor-id', read_deleted='no').AndReturn(fake_flavor)
+        db.flavor_extra_specs_get(self.context,
+                current_flavor['flavorid']).AndReturn(
+                        {'resize_policy_class': 'flavor'})
+
+        self.mox.ReplayAll()
+
+        rules = common_policy.Rules({'flavor:resize':
+                            common_policy.parse_rule('role:admin'),
+                            'compute:resize': common_policy.parse_rule('')})
+        policy.set_rules(rules)
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.compute_api.resize, self.context,
+                          fake_inst, flavor_id='flavor-id')
+
+    def test_migrate_disallowed_by_flavor_policy(self):
+        #NOTE(alaski): Only applicable at api level
+        if self.cell_type != 'api':
+            return
+
+        self.mox.StubOutWithMock(flavors, 'get_flavor_by_flavor_id')
+        self.mox.StubOutWithMock(db, 'flavor_extra_specs_get')
+        # Should never reach these.
+        self.mox.StubOutWithMock(self.compute_api, '_upsize_quota_delta')
+        self.mox.StubOutWithMock(self.compute_api, '_reserve_quota_delta')
+        self.mox.StubOutWithMock(self.compute_api, 'update')
+        self.mox.StubOutWithMock(quota.QUOTAS, 'commit')
+        self.mox.StubOutWithMock(self.compute_api, '_record_action_start')
+        self.mox.StubOutWithMock(self.compute_api.compute_task_api,
+                                 'resize_instance')
+
+        fake_inst = obj_base.obj_to_primitive(self._create_instance_obj())
+        current_flavor = flavors.extract_flavor(fake_inst)
+        db.flavor_extra_specs_get(self.context,
+                current_flavor['flavorid']).AndReturn(
+                        {'resize_policy_class': 'flavor'})
+
+        self.mox.ReplayAll()
+
+        rules = common_policy.Rules({'flavor:migrate':
+                            common_policy.parse_rule('role:admin'),
+                            'compute:resize': common_policy.parse_rule('')})
+        policy.set_rules(rules)
+
+        self.assertRaises(exception.PolicyNotAuthorized,
+                          self.compute_api.resize, self.context,
+                          fake_inst, flavor_id=None)
 
     def test_pause(self):
         # Ensure instance can be paused.
@@ -1924,6 +2039,20 @@ class _ComputeAPIUnitTestMixIn(object):
         method.assert_any_call(self.context, instances[2:], events[2:])
         self.assertEqual(2, method.call_count)
 
+    def test_create_disallowed_by_flavor_policy(self):
+        fake_bdm = {'fake': 'fake'}
+        fake_inst_type = {'extra_specs': {'cav_policy_class': 'flavor'}}
+        self.assertRaises(exception.PolicyNotAuthorized,
+                self.compute_api._check_create_policies, self.context,
+                None, None, fake_bdm, fake_inst_type)
+
+    def test_create_allowed_by_flavor_policy(self):
+        fake_bdm = {'fake': 'fake'}
+        fake_inst_type = {'extra_specs': {}}
+        # Passes if no exceptions are raised.
+        self.compute_api._check_create_policies(self.context, None, None,
+                fake_bdm, fake_inst_type)
+
     def test_volume_ops_invalid_task_state(self):
         instance = self._create_instance_obj()
         self.assertEqual(instance.vm_state, vm_states.ACTIVE)
@@ -2187,6 +2316,10 @@ class ComputeAPIComputeCellUnitTestCase(_ComputeAPIUnitTestMixIn,
         self.flags(cell_type='compute', enable=True, group='cells')
         self.compute_api = compute_api.API()
         self.cell_type = 'compute'
+
+    def test_resize_same_flavor_fails(self):
+        # NOTE(blamar): This test only applies to API cells
+        pass
 
     def test_resize_same_flavor_passes(self):
         self._test_resize(same_flavor=True)

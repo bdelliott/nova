@@ -1283,7 +1283,7 @@ class API(base.Base):
         return instance
 
     def _check_create_policies(self, context, availability_zone,
-            requested_networks, block_device_mapping):
+            requested_networks, block_device_mapping, instance_type):
         """Check policies for create()."""
         target = {'project_id': context.project_id,
                   'user_id': context.user_id,
@@ -1295,6 +1295,10 @@ class API(base.Base):
 
         if block_device_mapping:
             check_policy(context, 'create:attach_volume', target)
+            policy_class = instance_type['extra_specs'].get('cav_policy_class')
+            if policy_class:
+                check_policy(context, 'create:attach_volume', target,
+                        policy_class)
 
     def _check_multiple_instances_neutron_ports(self, requested_networks):
         """Check whether multiple instances are created from port id(s)."""
@@ -1324,7 +1328,7 @@ class API(base.Base):
         """
 
         self._check_create_policies(context, availability_zone,
-                requested_networks, block_device_mapping)
+                requested_networks, block_device_mapping, instance_type)
 
         if requested_networks and max_count > 1 and utils.is_neutron():
             self._check_multiple_instances_neutron_ports(requested_networks)
@@ -2405,6 +2409,19 @@ class API(base.Base):
             new_instance_type = flavors.get_flavor_by_flavor_id(
                     flavor_id, read_deleted="no")
 
+        current_extra_specs = self.db.flavor_extra_specs_get(context,
+                current_instance_type['flavorid'])
+        if self.cell_type == 'api':
+            flavor_policy_class = current_extra_specs.get(
+                                                         'resize_policy_class')
+            if flavor_policy_class:
+                if flavor_id:
+                    check_policy(context, 'resize', instance,
+                            flavor_policy_class)
+                else:
+                    check_policy(context, 'migrate', instance,
+                            flavor_policy_class)
+
         current_instance_type_name = current_instance_type['name']
         new_instance_type_name = new_instance_type['name']
         LOG.debug("Old instance type %(current_instance_type_name)s, "
@@ -2430,8 +2447,6 @@ class API(base.Base):
             # Unfortunately the current extra_specs are not stored in
             # system_metadata on the instance, so we have to try to pull
             # them.  The DB call returns an empty dict if none are found.
-            current_extra_specs = self.db.flavor_extra_specs_get(
-                    context, current_instance_type['flavorid'])
             current_flavor_class = current_extra_specs.get('class')
             new_flavor_class = new_instance_type['extra_specs'].get('class')
             if new_flavor_class != current_flavor_class:
