@@ -102,6 +102,14 @@ xenapi_vm_utils_opts = [
                     'other-config:my_favorite_sr=true. On the other hand, to '
                     'fall back on the Default SR, as displayed by XenCenter, '
                     'set this flag to: default-sr:true'),
+    cfg.IntOpt('max_ephemeral_disk_size_gb',
+               default=2000,
+               deprecated_name='xenapi_max_ephemeral_disk_size_gb',
+               deprecated_group='DEFAULT',
+               help='Maximum size of an ephemeral disk that is attached to '
+                    'a server. If a larger amount of space is requested in '
+                    'the flavor, it will be split across additional disks. '
+                    'The max acceptable value is 2043'),
     cfg.BoolOpt('sparse_copy',
                 default=True,
                 deprecated_name='xenapi_sparse_copy',
@@ -1145,9 +1153,11 @@ def get_ephemeral_disk_sizes(total_size_gb):
     if not total_size_gb:
         return
 
-    max_size_gb = 2000
-    if total_size_gb % 1024 == 0:
-        max_size_gb = 1024
+    # NOTE(alaski): RAX internal config value
+    max_size_gb = CONF.xenserver.max_ephemeral_disk_size_gb
+    #max_size_gb = 2000
+    #if total_size_gb % 1024 == 0:
+    #    max_size_gb = 1024
 
     left_to_allocate = total_size_gb
     while left_to_allocate > 0:

@@ -1281,6 +1281,7 @@ class GenerateEphemeralTestCase(VMUtilsTestBase):
         self.assertEqual(expected, list(result))
 
     def test_get_ephemeral_disk_sizes_two_disks_1024(self):
+        self.flags(max_ephemeral_disk_size_gb=1024, group='xenserver')
         result = vm_utils.get_ephemeral_disk_sizes(2048)
         expected = [1024, 1024]
         self.assertEqual(expected, list(result))
@@ -1311,6 +1312,7 @@ class GenerateEphemeralTestCase(VMUtilsTestBase):
             str(self.userdevice), self.name_label, 4030)
 
     def test_generate_ephemeral_cleans_up_on_error(self):
+        self.flags(max_ephemeral_disk_size_gb=1024, group='xenserver')
         self._expect_generate_disk(1024, self.userdevice,
                                    self.ephemeral_name_label)
         self._expect_generate_disk(1024, self.userdevice + 1,
