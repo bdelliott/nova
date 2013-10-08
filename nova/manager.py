@@ -64,6 +64,7 @@ from nova.openstack.common import log as logging
 from nova.openstack.common import periodic_task
 from nova.openstack.common.rpc import dispatcher as rpc_dispatcher
 from nova.scheduler import rpcapi as scheduler_rpcapi
+from nova import stat
 
 
 CONF = cfg.CONF
@@ -96,6 +97,9 @@ class Manager(base.Base, periodic_task.PeriodicTasks):
         base_rpc = baserpc.BaseRPCAPI(self.service_name, backdoor_port)
         apis.extend([self, base_rpc])
         serializer = objects_base.NovaObjectSerializer()
+
+        # TODO configurable
+        apis = [stat.ServiceStat(api) for api in apis]
         return rpc_dispatcher.RpcDispatcher(apis, serializer)
 
     def periodic_tasks(self, context, raise_on_error=False):
