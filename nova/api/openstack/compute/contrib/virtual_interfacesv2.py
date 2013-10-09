@@ -17,17 +17,21 @@
 
 from webob import exc
 
+from oslo.config import cfg
+
 from nova.api.openstack import extensions
 from nova.api.openstack import wsgi
 from nova.api.openstack import xmlutil
 from nova import compute
 from nova.compute import utils as compute_utils
 from nova import exception
+from nova import network
 from nova.network import model as nw_model
 from nova.openstack.common.gettextutils import _
 from nova.openstack.common import log as logging
 
 
+CONF = cfg.CONF
 LOG = logging.getLogger(__name__)
 authorize = extensions.extension_authorizer('compute', 'virtual_interfaces')
 
@@ -81,6 +85,14 @@ class ServerVirtualInterfaceController(object):
 
         return {'virtual_interfaces': vifs}
 
+    def _refresh_cache(self, context, instance):
+        if CONF.quark_networks:
+            net_api = network.API()
+            networks = net_api.get_all(context)
+            shared_nets = net_api.get_all(context, shared=True)
+            net_api.get_instance_nw_info(context, instance,
+                                         networks=networks + shared_nets)
+
     @wsgi.serializers(xml=VirtualInterfaceTemplate)
     def index(self, req, server_id):
         """Returns the list of VIFs for a given instance."""
@@ -108,6 +120,9 @@ class ServerVirtualInterfaceController(object):
         interfaces = nw_model.NetworkInfo.hydrate(interfaces)
         interfaces = [_translate_vif_summary_view(context, v)
                                             for v in interfaces]
+
+        self._refresh_cache(context, instance)
+
         return dict(virtual_interfaces=interfaces)
 
     @wsgi.serializers(xml=VirtualInterfaceTemplate)
@@ -117,6 +132,7 @@ class ServerVirtualInterfaceController(object):
         instance = self.compute_api.get(context, server_id)
         self.compute_api.delete_vifs_for_instance(context, instance,
                                                   [id])
+        self._refresh_cache(context, instance)
 
 
 class Virtual_interfacesv2(extensions.ExtensionDescriptor):

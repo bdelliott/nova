@@ -35,6 +35,8 @@ opts = [
     cfg.IntOpt('quota_networks',
                default=3,
                help='Number of private networks allowed per project'),
+    cfg.BoolOpt("quark_networks", default=False,
+                help="Enables or disables handling for Quark networks")
 ]
 
 CONF = cfg.CONF
@@ -114,8 +116,16 @@ class NetworkController(object):
         project_id = CONF.quantum_default_tenant_id
         ctx = nova_context.RequestContext(user_id=None,
                                           project_id=project_id)
+        ctx = ctx.elevated()
+
         networks = {}
-        for n in self.network_api.get_all(ctx):
+        net_list = None
+        if CONF.quark_networks:
+            net_list = self.network_api.get_all(ctx, shared=True)
+        else:
+            net_list = self.network_api.get_all(ctx)
+
+        for n in net_list:
             networks[n['id']] = n['label']
         return [{'id': k, 'label': v} for k, v in networks.iteritems()]
 
@@ -186,11 +196,27 @@ class NetworkController(object):
                 msg = _("Requested network does not contain "
                         "enough (2+) usable hosts")
                 raise exc.HTTPBadRequest(explanation=msg)
+            net_cidr = str(net.cidr)
+            msg_kwargs = {"net_cidr": net_cidr, "cidr": cidr}
+            if (cidr != net_cidr):
+                msg = _("'%(cidr)s' isn't a recognized IP subnet cidr,"
+                        " '%(net_cidr)s' is recommended") % msg_kwargs
+                raise exc.HTTPBadRequest(explanation=msg)
+
+            if net.version == 6 and net.prefixlen > 64:
+                msg = _("Requested cidr: %s is too small, must be a "
+                        "larger subnet. A prefix less than /65 is "
+                        "required.") % (net_cidr)
+                raise exc.HTTPBadRequest(explanation=msg)
+
         except netexc.AddrFormatError:
             msg = _("CIDR is malformed.")
             raise exc.HTTPBadRequest(explanation=msg)
         except netexc.AddrConversionError:
             msg = _("Address could not be converted.")
+            raise exc.HTTPBadRequest(explanation=msg)
+        except ValueError:
+            msg = _("CIDR is malformed.")
             raise exc.HTTPBadRequest(explanation=msg)
 
         try:

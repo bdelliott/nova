@@ -1990,8 +1990,18 @@ class VMOps(object):
         record for the given vm instance. If the key exists in xenstore,
         it is overwritten
         """
-        self._remove_from_param_xenstore(vm_ref, key)
-        self._session.call_xenapi('VM.add_to_xenstore_data', vm_ref, key, val)
+        msg = ('writing to param xenstore for |%s|\n'
+               '|%s| = |%s|')
+        LOG.debug(msg % (vm_ref, key, val))
+        for i in xrange(1, 4):
+            try:
+                self._session.call_xenapi_chain(
+                        (('VM.remove_from_xenstore_data', (vm_ref, key)),
+                         ('VM.add_to_xenstore_data', (vm_ref, key, val))))
+                break
+            except self._session.XenAPI.Failure:
+                msg = 'add to param xenstore attempt %s/3 totes failed!'
+                LOG.exception(msg % i)
 
     def _remove_from_param_xenstore(self, vm_ref, key):
         """Takes a single key and removes it from the xenstore parameter

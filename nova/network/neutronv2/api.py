@@ -226,7 +226,7 @@ class API(base_api.NetworkAPI):
         dhcp_opts = kwargs.get('dhcp_options', None)
         ports = {}
         fixed_ips = {}
-        net_ids = []
+        net_ids = None if requested_networks is None else []
         if requested_networks:
             for network_id, fixed_ip, port_id in requested_networks:
                 if port_id:

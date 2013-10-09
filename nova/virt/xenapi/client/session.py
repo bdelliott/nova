@@ -185,6 +185,12 @@ class XenAPISession(object):
         with self._get_session() as session:
             return session.xenapi.host.get_by_uuid(self.host_uuid)
 
+    def call_xenapi_chain(self, methods):
+        """Call the specified XenAPI methods on a background thread."""
+        with self._get_session() as session:
+            return [session.xenapi_request(method, args)
+                    for method, args in methods]
+
     def call_xenapi(self, method, *args):
         """Call the specified XenAPI method on a background thread."""
         with self._get_session() as session:
