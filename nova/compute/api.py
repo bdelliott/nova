@@ -554,9 +554,14 @@ class API(base.Base):
         if auto_disk_config is None:
             auto_disk_config = strutils.bool_from_string(auto_disk_config_img)
 
+        # Try to use 'architecture' first for backwards compatibility:
+        arch = image_properties.get(
+                'architecture',
+                image_properties.get('org.openstack__1__architecture'))
+
         return {
             'os_type': image_properties.get('os_type'),
-            'architecture': image_properties.get('architecture'),
+            'architecture': arch,
             'vm_mode': image_properties.get('vm_mode'),
             'auto_disk_config': auto_disk_config
         }

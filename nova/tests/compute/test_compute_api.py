@@ -2092,6 +2092,25 @@ class _ComputeAPIUnitTestMixIn(object):
 
         do_test()
 
+    def _test_arch(self, key):
+        image = {
+            'id': 1,
+            'name': 'name',
+            'status': 'active',
+            'properties': {key: 'x86'},
+        }
+
+        props = self.compute_api._inherit_properties_from_image(image, None)
+        self.assertEqual('x86', props['architecture'])
+
+    def test_inherit_arch_from_image(self):
+        # inherit 'architecture' property from image
+        self._test_arch('architecture')
+
+    def test_inherit_arch_from_image_2(self):
+        # alternatively, inherit arch as 'org.openstack__1__architecture'
+        self._test_arch('org.openstack__1__architecture')
+
 
 class ComputeAPIUnitTestCase(_ComputeAPIUnitTestMixIn, test.NoDBTestCase):
     def setUp(self):
