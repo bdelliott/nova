@@ -32,6 +32,7 @@ from nova.openstack.common import log as logging
 from nova.openstack.common import timeutils
 from nova.pci import pci_request
 from nova.pci import pci_stats
+from nova.scheduler import consumers
 from nova.scheduler import filters
 from nova.scheduler import weights
 
@@ -120,6 +121,13 @@ class HostState(object):
         self.free_disk_mb = 0
         self.vcpus_total = 0
         self.vcpus_used = 0
+
+        # Generic resource extensions
+        self.extra_resources = {}
+
+        # Generic consumer extensions
+        self.consumer_handler = consumers.ResourceConsumerHandler()
+        self.consumer_classes = self.consumer_handler.get_all_classes() #ptm: change to get_loadable_classes(CONF.scheduler_consumer_classes)
 
         # Additional host information from the compute node stats:
         self.vm_states = {}
@@ -254,7 +262,12 @@ class HostState(object):
         # update metrics
         self._update_metrics_from_compute_node(compute)
 
-    def consume_from_instance(self, instance):
+        # update resource allocation information
+        if compute.get('extra_resources'):
+            self.extra_resources = jsonutils.load(
+                compute.get('extra_resources'))
+
+    def consume_from_instance(self, instance, instance_type=None):
         """Incrementally update host state from an instance."""
         disk_mb = (instance['root_gb'] + instance['ephemeral_gb']) * 1024
         ram_mb = instance['memory_mb']
@@ -302,6 +315,10 @@ class HostState(object):
                 task_states.RESIZE_PREP, task_states.IMAGE_SNAPSHOT,
                 task_states.IMAGE_BACKUP]:
             self.num_io_ops += 1
+
+        # Consumer extensions
+        self.consumer_handler.consume_from_instance(self.consumer_classes, self,
+                                                    instance, instance_type)
 
     def _statmap(self, stats):
         return dict((st['key'], st['value']) for st in stats)

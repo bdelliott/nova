@@ -40,7 +40,7 @@ class BaremetalNodeState(host_manager.HostState):
         self.vcpus_total = compute['vcpus']
         self.vcpus_used = compute['vcpus_used']
 
-    def consume_from_instance(self, instance):
+    def consume_from_instance(self, instance, instance_type=None):
         self.free_ram_mb = 0
         self.free_disk_mb = 0
         self.vcpus_used = self.vcpus_total
