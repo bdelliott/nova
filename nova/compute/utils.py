@@ -174,11 +174,25 @@ def get_next_device_name(instance, device_name_list,
     #             default_ephemeral_device and default_swap_device
     if driver.compute_driver_matches('xenapi.XenAPIDriver'):
         flavor = flavors.extract_flavor(instance)
-        if flavor['ephemeral_gb']:
-            used_letters.add('b')
 
         if flavor['swap']:
             used_letters.add('c')
+
+        if instance['config_drive']:
+            used_letters.add('d')
+
+        ephemeral_gb = flavor['ephemeral_gb']
+        if ephemeral_gb:
+            used_letters.add('e')
+
+            if ephemeral_gb > 300:
+                used_letters.add('f')
+
+            if ephemeral_gb > 600:
+                used_letters.add('g')
+
+            if ephemeral_gb > 900:
+                used_letters.add('h')
 
     if not req_letter:
         req_letter = _get_unused_letter(used_letters)

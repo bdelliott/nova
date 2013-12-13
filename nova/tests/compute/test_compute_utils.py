@@ -189,6 +189,7 @@ class ComputeValidateDeviceTestCase(test.TestCase):
     def test_swap_no_ephemeral(self):
         del self.instance['default_ephemeral_device']
         self.instance['default_swap_device'] = "/dev/vdb"
+        self.instance['config_drive'] = False
         device = self._validate_device()
         self.assertEqual(device, '/dev/vdc')
 
@@ -197,36 +198,50 @@ class ComputeValidateDeviceTestCase(test.TestCase):
                 'ephemeral_gb': 10,
                 'swap': 0,
                 })
+        self.instance['config_drive'] = True
         self.stubs.Set(flavors, 'get_flavor',
                        lambda instance_type_id, ctxt=None: self.flavor)
         device = self._validate_device()
+        self.assertEqual(device, '/dev/xvdb')
+        self.data.append(self._fake_bdm(device))
+        device = self._validate_device()
         self.assertEqual(device, '/dev/xvdc')
+        self.data.append(self._fake_bdm(device))
+        device = self._validate_device()
+        self.assertEqual(device, '/dev/xvdf')
+
+    def _test_ephemeral_xenapi_big_disk(self, size, enddisk):
+        self._update_flavor({
+                'ephemeral_gb': size,
+                'swap': 0,
+                })
+        self.instance['config_drive'] = True
+        self.stubs.Set(flavors, 'get_flavor',
+                       lambda instance_type_id, ctxt=None: self.instance_type)
+        device = self._validate_device()
+        self.assertEqual(device, '/dev/xvdb')
+        self.data.append(self._fake_bdm(device))
+        device = self._validate_device()
+        self.assertEqual(device, '/dev/xvdc')
+        self.data.append(self._fake_bdm(device))
+        device = self._validate_device()
+        self.assertEqual(device, enddisk)
+
+    def test_ephemeral_xenapi_big_disk_400(self):
+        self._test_ephemeral_xenapi_big_disk(400, '/dev/xvdg')
+
+    def test_ephemeral_xenapi_big_disk_700(self):
+        self._test_ephemeral_xenapi_big_disk(700, '/dev/xvdh')
+
+    def test_ephemeral_xenapi_big_disk_1200(self):
+        self._test_ephemeral_xenapi_big_disk(1200, '/dev/xvdi')
 
     def test_swap_xenapi(self):
         self._update_flavor({
                 'ephemeral_gb': 0,
                 'swap': 10,
                 })
-        self.stubs.Set(flavors, 'get_flavor',
-                       lambda instance_type_id, ctxt=None: self.flavor)
-        device = self._validate_device()
-        self.assertEqual(device, '/dev/xvdb')
-
-    def test_swap_and_ephemeral_xenapi(self):
-        self._update_flavor({
-                'ephemeral_gb': 10,
-                'swap': 10,
-                })
-        self.stubs.Set(flavors, 'get_flavor',
-                       lambda instance_type_id, ctxt=None: self.flavor)
-        device = self._validate_device()
-        self.assertEqual(device, '/dev/xvdd')
-
-    def test_swap_and_one_attachment_xenapi(self):
-        self._update_flavor({
-                'ephemeral_gb': 0,
-                'swap': 10,
-                })
+        self.instance['config_drive'] = False
         self.stubs.Set(flavors, 'get_flavor',
                        lambda instance_type_id, ctxt=None: self.flavor)
         device = self._validate_device()
@@ -234,6 +249,34 @@ class ComputeValidateDeviceTestCase(test.TestCase):
         self.data.append(self._fake_bdm(device))
         device = self._validate_device()
         self.assertEqual(device, '/dev/xvdd')
+
+    def test_swap_and_ephemeral_xenapi(self):
+        self._update_flavor({
+                'ephemeral_gb': 10,
+                'swap': 10,
+                })
+        self.instance['config_drive'] = True
+        self.stubs.Set(flavors, 'get_flavor',
+                       lambda instance_type_id, ctxt=None: self.flavor)
+        device = self._validate_device()
+        self.assertEqual(device, '/dev/xvdb')
+        self.data.append(self._fake_bdm(device))
+        device = self._validate_device()
+        self.assertEqual(device, '/dev/xvdf')
+
+    def test_swap_and_one_attachment_xenapi(self):
+        self._update_flavor({
+                'ephemeral_gb': 0,
+                'swap': 10,
+                })
+        self.instance['config_drive'] = True
+        self.stubs.Set(flavors, 'get_flavor',
+                       lambda instance_type_id, ctxt=None: self.flavor)
+        device = self._validate_device()
+        self.assertEqual(device, '/dev/xvdb')
+        self.data.append(self._fake_bdm(device))
+        device = self._validate_device()
+        self.assertEqual(device, '/dev/xvde')
 
 
 class DefaultDeviceNamesForInstanceTestCase(test.NoDBTestCase):
