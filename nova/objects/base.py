@@ -544,10 +544,12 @@ class NovaObjectSerializer(nova.openstack.common.rpc.serializer.Serializer):
 
     def serialize_entity(self, context, entity):
         if isinstance(entity, (tuple, list, set)):
+            LOG.warn("Serializing list/tuple/set")
             entity = self._process_iterable(context, self.serialize_entity,
                                             entity)
         elif (hasattr(entity, 'obj_to_primitive') and
               callable(entity.obj_to_primitive)):
+            LOG.warn("Serializing obj_to_prim")
             entity = entity.obj_to_primitive()
         return entity
 

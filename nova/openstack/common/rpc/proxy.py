@@ -22,10 +22,13 @@ For more information about rpc API version numbers, see:
 """
 
 
+from nova.openstack.common import log as logging
 from nova.openstack.common import rpc
 from nova.openstack.common.rpc import common as rpc_common
 from nova.openstack.common.rpc import serializer as rpc_serializer
 
+
+LOG = logging.getLogger(__name__)
 
 class RpcProxy(object):
     """A helper class for rpc clients.
@@ -99,10 +102,15 @@ class RpcProxy(object):
         :param kwargs: The arguments to serialize
         :returns: A new set of serialized arguments
         """
+        LOG.warn("SERIALIZER: %s" % self.serializer)
         new_kwargs = dict()
         for argname, arg in kwargs.iteritems():
+            LOG.warn("serializing: %s [%s]" % (argname, arg))
             new_kwargs[argname] = self.serializer.serialize_entity(context,
                                                                    arg)
+
+            if argname == 'filter_properties':
+                LOG.warn("serialized to: %s [%s]" % (argname, new_kwargs[argname]))
         return new_kwargs
 
     def call(self, context, msg, topic=None, version=None, timeout=None):
@@ -166,6 +174,7 @@ class RpcProxy(object):
         :returns: None.  rpc.cast() does not wait on any return value from the
                   remote method.
         """
+        LOG.warn("Casting to topic: %s" % topic)
         self._set_version(msg, version)
         msg['args'] = self._serialize_msg_args(context, msg['args'])
         rpc.cast(context, self._get_topic(topic), msg)

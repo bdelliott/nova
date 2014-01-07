@@ -56,6 +56,7 @@ from nova import test
 from nova.tests.api.openstack.compute.contrib import (
     test_neutron_security_groups as test_neutron)
 from nova.tests import cast_as_call
+from nova.tests import fake_compute_api
 from nova.tests import fake_network
 from nova.tests import fake_utils
 from nova.tests.image import fake
@@ -162,6 +163,8 @@ class CloudTestCase(test.TestCase):
 
         self.stubs.Set(compute_utils, 'notify_about_instance_usage', dumb)
         fake_network.set_stub_network_methods(self.stubs)
+
+        fake_compute_api.stub(self.stubs)
 
         # set up our cloud
         self.cloud = cloud.CloudController()

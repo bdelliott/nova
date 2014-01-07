@@ -1619,6 +1619,19 @@ class _ComputeAPIUnitTestMixIn(object):
                           "new password",
                           auto_disk_config=True)
 
+    def test_build_filter_properties(self):
+        flavor = self._create_flavor()
+        hints = {'bet': 'onblack'}
+        forced_host = None
+        forced_node = None
+        fprops = self.compute_api._build_filter_properties(hints, forced_host,
+                forced_node, flavor)
+        self.assertRaises(AttributeError, fprops.force_hosts)
+        self.assertRaises(AttributeError, fprops.force_nodes)
+        self.assertEqual(hints, fprops.scheduler_hints)
+
+        self.assertEqual(flavor['flavorid'], fprops.instance_type['flavorid'])
+
 
 class ComputeAPIUnitTestCase(_ComputeAPIUnitTestMixIn, test.NoDBTestCase):
     def setUp(self):

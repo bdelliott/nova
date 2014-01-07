@@ -53,6 +53,7 @@ from nova.tests.api.openstack.compute.contrib import test_fping
 from nova.tests.api.openstack.compute.contrib import test_networks
 from nova.tests.api.openstack.compute.contrib import test_services
 from nova.tests.api.openstack import fakes
+from nova.tests import fake_compute_api
 from nova.tests import fake_instance_actions
 from nova.tests import fake_network
 from nova.tests import fake_network_cache_model
@@ -98,6 +99,7 @@ class ApiSampleTestBaseV2(api_samples_test_base.ApiSampleTestBase):
         self.useFixture(test.SampleNetworks(host=self.network.host))
         fake_network.stub_compute_with_ips(self.stubs)
         fake_utils.stub_out_utils_spawn_n(self.stubs)
+        fake_compute_api.stub(self.stubs)
         self.generate_samples = os.getenv('GENERATE_SAMPLES') is not None
 
 
