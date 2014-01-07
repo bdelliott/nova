@@ -237,6 +237,20 @@ class BaseTestCase(test.TestCase):
                        fake_get_nw_info)
         self.stubs.Set(network_api.API, 'allocate_for_instance',
                        fake_get_nw_info)
+
+        # fake rpc needs json-serializable rpc, so fake the filter props
+        def fake_build_filter_properties(self, scheduler_hints, forced_host,
+                                         forced_node, instance_type):
+            filter_properties = dict(scheduler_hints=scheduler_hints)
+            filter_properties['instance_type'] = instance_type
+            if forced_host:
+                filter_properties['force_hosts'] = [forced_host]
+            if forced_node:
+                filter_properties['force_nodes'] = [forced_node]
+            return filter_properties
+
+        self.stubs.Set(compute_api.API, '_build_filter_properties',
+                       fake_build_filter_properties)
         self.compute_api = compute.API()
 
         # Just to make long lines short

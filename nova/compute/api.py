@@ -54,6 +54,7 @@ from nova import notifications
 from nova import notifier
 from nova.objects import aggregate as aggregate_obj
 from nova.objects import base as obj_base
+from nova.objects import filter_properties as filter_properties_obj
 from nova.objects import flavor as flavor_obj
 from nova.objects import instance as instance_obj
 from nova.objects import instance_action
@@ -767,15 +768,17 @@ class API(base.Base):
         # by the network quotas
         return base_options, max_network_count
 
-    def _build_filter_properties(self, context, scheduler_hints, forced_host,
+    def _build_filter_properties(self, scheduler_hints, forced_host,
             forced_node, instance_type):
-        filter_properties = dict(scheduler_hints=scheduler_hints)
-        filter_properties['instance_type'] = instance_type
-        if forced_host:
-            filter_properties['force_hosts'] = [forced_host]
-        if forced_node:
-            filter_properties['force_nodes'] = [forced_node]
-        return filter_properties
+
+        flavor = flavor_obj.Flavor()
+
+        for key, value in instance_type.iteritems():
+            flavor[key] = value
+
+        return filter_properties_obj.FilterProperties(scheduler_hints,
+                forced_host, forced_node, flavor)
+
 
     def _provision_instances(self, context, instance_type, min_count,
             max_count, base_options, boot_meta, security_groups,
@@ -922,8 +925,8 @@ class API(base.Base):
                 min_count, max_count, base_options, boot_meta, security_groups,
                 block_device_mapping)
 
-        filter_properties = self._build_filter_properties(context,
-                scheduler_hints, forced_host, forced_node, instance_type)
+        filter_properties = self._build_filter_properties(scheduler_hints,
+                forced_host, forced_node, instance_type)
 
         for instance in instances:
             self._record_action_start(context, instance,
