@@ -85,9 +85,13 @@ def main():
             manager = None
 
         try:
-            launcher.launch_service(service.Service.create(binary=binary,
-                                                           topic=topic,
-                                                          manager=manager))
+            server = service.Service.create(binary=binary, topic=topic,
+                                            manager=manager)
+            workers = getattr(CONF, '%s_workers' % server.topic, None)
+            if not workers:
+                workers = 1
+            launcher.launch_service(server, workers=workers) 
+
         except (Exception, SystemExit):
             LOG.exception(_('Failed to load %s'), binary)
     launcher.wait()

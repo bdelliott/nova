@@ -248,6 +248,21 @@
 # value)
 #service_down_time=60
 
+# Number of workers for the cells service (integer value)
+#cells_workers=<None>
+
+# Number of workers for the compute service (integer value)
+#compute_workers=<None>
+
+# Number of workers for the conductor service (integer value)
+#conductor_workers=<None>
+
+# Number of workers for the network service (integer value)
+#network_workers=<None>
+
+# Number of workers for the scheduler service (integer value)
+#scheduler_workers=<None>
+
 
 #
 # Options defined in nova.test

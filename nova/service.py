@@ -103,6 +103,16 @@ service_opts = [
     cfg.IntOpt('service_down_time',
                default=60,
                help='maximum time since last check-in for up service'),
+    cfg.IntOpt('cells_workers',
+               help='Number of workers for the cells service'),
+    cfg.IntOpt('compute_workers',
+               help='Number of workers for the compute service'),
+    cfg.IntOpt('conductor_workers',
+               help='Number of workers for the conductor service'),
+    cfg.IntOpt('network_workers',
+               help='Number of workers for the network service'),
+    cfg.IntOpt('scheduler_workers',
+               help='Number of workers for the scheduler service'),
     ]
 
 cli_opts = [
@@ -423,6 +433,9 @@ def serve(server, workers=None):
     global _launcher
     if _launcher:
         raise RuntimeError(_('serve() can only be called once'))
+
+    if not workers:
+        workers = getattr(CONF, '%s_workers' % server.topic, None)
 
     _launcher = service.launch(server, workers=workers)
 
