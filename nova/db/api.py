@@ -148,6 +148,27 @@ def service_update(context, service_id, values):
 ###################
 
 
+def _stats_backward(compute_node):
+    # generate a list of dicts that act like the old ComputeNodeStat
+    # model
+    extra_resources = compute_node['extra_resources'] or '{}'
+    extra_resources = jsonutils.loads(extra_resources)
+    stats = extra_resources.get('stats', {})
+    old = [{'key': key, 'value': value} for key, value in stats.iteritems()]
+    compute_node['stats'] = old
+
+
+def _stats_forward(values):
+    # update this old style request to encode the stats in their new
+    # location
+    stats = values.pop('stats', None)
+    if stats:
+        extra_resources = values.get('extra_resources', None) or '{}'
+        extra_resources = jsonutils.loads(extra_resources)
+        extra_resources['stats'] = stats
+        values['extra_resources'] = jsonutils.dumps(extra_resources)
+
+
 def compute_node_get(context, compute_id):
     """Get a compute node by its id.
 
@@ -159,7 +180,13 @@ def compute_node_get(context, compute_id):
 
     Raises ComputeHostNotFound if compute node with the given ID doesn't exist.
     """
-    return IMPL.compute_node_get(context, compute_id)
+    node = IMPL.compute_node_get(context, compute_id)
+
+    # NOTE(belliott) add a 'stats' field for backward compatibility.
+    # Remove in 'J' release
+    _stats_backward(node)
+
+    return node
 
 
 def compute_node_get_by_service_id(context, service_id):
@@ -188,7 +215,14 @@ def compute_node_get_all(context, no_date_fields=False):
     :returns: List of dictionaries each containing compute node properties,
               including corresponding service and stats
     """
-    return IMPL.compute_node_get_all(context, no_date_fields)
+    nodes = IMPL.compute_node_get_all(context, no_date_fields)
+
+    for node in nodes:
+        # NOTE(belliott) add a 'stats' field for backward compatibility.
+        # Remove in 'J' release
+        _stats_backward(node)
+
+    return nodes
 
 
 def compute_node_search_by_hypervisor(context, hypervisor_match):
@@ -212,26 +246,41 @@ def compute_node_create(context, values):
     :returns: Dictionary-like object containing the properties of the created
               node, including its corresponding service and statistics
     """
-    return IMPL.compute_node_create(context, values)
+
+    # NOTE(belliott) add json encoded stats for forward compatibility.
+    # Remove in 'J' release
+    _stats_forward(values)
+    
+    node = IMPL.compute_node_create(context, values)
+
+    # NOTE(belliott) add a 'stats' field for backward compatibility.
+    # Remove in 'J' release
+    _stats_backward(node)
+    return node
 
 
-def compute_node_update(context, compute_id, values, prune_stats=False):
+def compute_node_update(context, compute_id, values):
     """Set the given properties on a compute node and update it.
 
     :param context: The security context
     :param compute_id: ID of the compute node
     :param values: Dictionary containing compute node properties to be updated
-    :param prune_stats: If set to True, forces the compute node statistics
-                        entries corresponding to the given compute node with
-                        keys not present in the values['stats'] dictionary to
-                        be deleted from the database. Set to False by default
 
     :returns: Dictionary-like object containing the properties of the updated
               compute node, including its corresponding service and statistics
 
     Raises ComputeHostNotFound if compute node with the given ID doesn't exist.
     """
-    return IMPL.compute_node_update(context, compute_id, values, prune_stats)
+    # NOTE(belliott) add json encoded stats for forward compatibility.
+    # Remove in 'J' release
+    _stats_forward(values)
+
+    node = IMPL.compute_node_update(context, compute_id, values)
+
+    # NOTE(belliott) add a 'stats' field for backward compatibility.
+    # Remove in 'J' release
+    _stats_backward(node)
+    return node
 
 
 def compute_node_delete(context, compute_id):
