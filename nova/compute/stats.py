@@ -15,6 +15,9 @@
 
 from nova.compute import task_states
 from nova.compute import vm_states
+from nova.openstack.common import jsonutils
+
+STATS_VERSION = '1.0'
 
 
 class Stats(dict):
@@ -25,6 +28,9 @@ class Stats(dict):
 
         # Track instance states for compute node workload calculations:
         self.states = {}
+
+        # Version for json serialization
+        self['version'] = STATS_VERSION
 
     def clear(self):
         super(Stats, self).clear()
@@ -117,6 +123,9 @@ class Stats(dict):
     def update_stats_for_migration(self, instance_type, sign=1):
         x = self.get("num_vcpus_used", 0)
         self["num_vcpus_used"] = x + (sign * instance_type['vcpus'])
+
+    def json(self):
+        return jsonutils.dumps(self)
 
     def _decrement(self, key):
         x = self.get(key, 0)

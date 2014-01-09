@@ -53,6 +53,7 @@ CONF.register_opts(resource_tracker_opts)
 
 LOG = logging.getLogger(__name__)
 COMPUTE_RESOURCE_SEMAPHORE = "compute_resources"
+EXTRA_RESOURCES_VERSION = '1.0'
 
 CONF.import_opt('my_ip', 'nova.netconf')
 
@@ -237,7 +238,6 @@ class ResourceTracker(object):
                     self.pci_tracker.update_pci_for_migration(instance,
                                                               sign=-1)
                 self._update_usage(self.compute_node, itype, sign=-1)
-                self.compute_node['stats'] = self.stats
 
                 ctxt = context.get_admin_context()
                 self._update(ctxt, self.compute_node)
@@ -327,6 +327,7 @@ class ResourceTracker(object):
 
     def _sync_compute_node(self, context, resources):
         """Create or update the compute node DB record."""
+
         if not self.compute_node:
             # we need a copy of the ComputeNode record:
             service = self._get_service(context)
@@ -354,12 +355,16 @@ class ResourceTracker(object):
 
         else:
             # just update the record:
-            self._update(context, resources, prune_stats=True)
+            self._update(context, resources)
             LOG.info(_('Compute_service record updated for %(host)s:%(node)s')
                     % {'host': self.host, 'node': self.nodename})
 
     def _create(self, context, values):
         """Create the compute node in the DB."""
+
+        # json-ify extra resource and stat information
+        values['extra_resources'] = self._extra_resources()
+
         # initialize load stats from existing instances:
         self.compute_node = self.conductor_api.compute_node_create(context,
                                                                    values)
@@ -421,12 +426,16 @@ class ResourceTracker(object):
         if 'pci_devices' in resources:
             LOG.audit(_("Free PCI devices: %s") % resources['pci_devices'])
 
-    def _update(self, context, values, prune_stats=False):
+    def _update(self, context, values):
         """Persist the compute node updates to the DB."""
         if "service" in self.compute_node:
             del self.compute_node['service']
+        
+        # json-ify extra resource and stat information
+        #values['extra_resources'] = self._extra_resources()
+
         self.compute_node = self.conductor_api.compute_node_update(
-            context, self.compute_node, values, prune_stats)
+            context, self.compute_node, values)
         if self.pci_tracker:
             self.pci_tracker.save(context)
 
@@ -494,7 +503,6 @@ class ResourceTracker(object):
             if self.pci_tracker:
                 self.pci_tracker.update_pci_for_migration(instance)
             self._update_usage(resources, itype)
-            resources['stats'] = self.stats
             if self.pci_tracker:
                 resources['pci_stats'] = jsonutils.dumps(
                         self.pci_tracker.stats)
@@ -567,7 +575,6 @@ class ResourceTracker(object):
             self._update_usage(resources, instance, sign=sign)
 
         resources['current_workload'] = self.stats.calculate_workload()
-        resources['stats'] = self.stats
         if self.pci_tracker:
             resources['pci_stats'] = jsonutils.dumps(self.pci_tracker.stats)
         else:
@@ -673,3 +680,9 @@ class ResourceTracker(object):
         except KeyError:
             return self.conductor_api.instance_type_get(context,
                     instance_type_id)
+
+    def _extra_resources(self):
+        return {
+            'stats': self.stats.json(),
+            'version': EXTRA_RESOURCES_VERSION
+        }
