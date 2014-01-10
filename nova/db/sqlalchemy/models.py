@@ -122,6 +122,9 @@ class ComputeNode(BASE, NovaBase):
     # data about additional resources.
     extra_resources = Column(Text)
 
+    # json-encode string containing compute node statistics
+    stats = Column(Text)
+
 
 class ComputeNodeStat(BASE, NovaBase):
     """Stats related to the current workload of a compute host that are
