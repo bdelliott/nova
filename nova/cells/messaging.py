@@ -943,10 +943,11 @@ class _TargetedMessageMethods(_BaseMessageMethods):
                                             rotation)
 
     def rebuild_instance(self, message, instance, image_href, admin_password,
-                         files_to_inject, kwargs):
+                         files_to_inject, preserve_ephemeral, kwargs):
         self._call_compute_api_with_obj(message.ctxt, instance, 'rebuild',
                                         image_href, admin_password,
-                                        files_to_inject, **kwargs)
+                                        files_to_inject, preserve_ephemeral,
+                                        **kwargs)
 
 
 class _BroadcastMessageMethods(_BaseMessageMethods):
@@ -1793,10 +1794,11 @@ class MessageRunner(object):
                               extra_kwargs=extra_kwargs)
 
     def rebuild_instance(self, ctxt, instance, image_href, admin_password,
-                         files_to_inject, kwargs):
+                         files_to_inject, preserve_ephemeral, kwargs):
         extra_kwargs = dict(image_href=image_href,
                             admin_password=admin_password,
                             files_to_inject=files_to_inject,
+                            preserve_ephemeral=preserve_ephemeral,
                             kwargs=kwargs)
         self._instance_action(ctxt, instance, 'rebuild_instance',
                               extra_kwargs=extra_kwargs)
