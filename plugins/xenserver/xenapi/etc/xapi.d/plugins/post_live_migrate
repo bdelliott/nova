@@ -1,0 +1,84 @@
+#!/usr/bin/env python
+
+# Copyright (c) 2014 OpenStack Foundation
+# All Rights Reserved.
+#
+#    Licensed under the Apache License, Version 2.0 (the "License"); you may
+#    not use this file except in compliance with the License. You may obtain
+#    a copy of the License at
+#
+#         http://www.apache.org/licenses/LICENSE-2.0
+#
+#    Unless required by applicable law or agreed to in writing, software
+#    distributed under the License is distributed on an "AS IS" BASIS, WITHOUT
+#    WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied. See the
+#    License for the specific language governing permissions and limitations
+
+#    under the License.
+
+"""This plugin is specifically to do two things post live-migration:
+    1) force GARP for the live-migrated instance
+    2) ensure instance_qos is set for the instance
+
+See Redmine #4403 and #3269
+"""
+
+import subprocess
+import XenAPIPlugin
+
+import pluginlib_nova
+
+pluginlib_nova.configure_logging('post_live_migration')
+logging = pluginlib_nova.logging
+PluginError = pluginlib_nova.PluginError
+script_commands = ('/sbin/wuzaarp vms %s',
+                   '/etc/xensource/scripts/instance_qos create %s -d')
+
+
+def instance_post_live_migration(session, args_dict):
+    # NOTE(sulo): uuid here is nova uuid
+    vm_uuid = args_dict['uuid']
+    name_label = "instance-" + str(vm_uuid)
+    vm_ref = get_output("xe", "vm-list", "--minimal",
+                        "name-label=%s" % name_label)
+    vm_ref = vm_ref.split('\n')
+
+    for comm in script_commands:
+        command = comm % vm_ref[0]
+        msg = "Calling %s for %s post live-migration" % (command, name_label)
+        logging.info(msg)
+        retcode = get_return_code(*command.split(' '))
+
+        if retcode:
+            # Just log the exception and move on
+            msg = "command %s for %s failed" % (command, name_label)
+            logging.info(msg)
+
+    return 'success'
+
+
+def check_output(*popenargs, **kwargs):
+    kwargs['close_fds'] = kwargs.get('close_fds', True)
+    input = kwargs.pop('input', None)
+
+    if input is not None and kwargs.get('stdin') != subprocess.PIPE:
+        kwargs['stdin'] = subprocess.PIPE
+
+    process = subprocess.Popen(stdout=subprocess.PIPE, *popenargs, **kwargs)
+    output, unused_err = process.communicate(input=input)
+    retcode = process.poll()
+
+    return (retcode, output)
+
+
+def get_output(*command, **kwargs):
+    return check_output(command, **kwargs)[1].strip()
+
+
+def get_return_code(*command, **kwargs):
+    return check_output(command, **kwargs)[0]
+
+
+if __name__ == "__main__":
+    XenAPIPlugin.dispatch({"instance_post_live_migration":
+                           instance_post_live_migration})

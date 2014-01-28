@@ -170,6 +170,10 @@ class FakeSessionForVMTests(fake.SessionBase):
         elif (plugin, method) == ("xenhost", "iptables_config"):
             return fake.as_json(out=self._fake_iptables_save_output,
                                 err='')
+        elif (plugin, method) == ("post_live_migrate",
+                "instance_post_live_migration"):
+            # Just don't raise anything
+            return None
         else:
             return (super(FakeSessionForVMTests, self).
                     host_call_plugin(_1, _2, plugin, method, _5))

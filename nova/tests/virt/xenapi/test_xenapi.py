@@ -3235,7 +3235,7 @@ class XenAPILiveMigrateTestCase(stubs.XenAPITestBaseNoDB):
         stubs.stubout_session(self.stubs, stubs.FakeSessionForVMTests)
         self.conn = xenapi_conn.XenAPIDriver(fake.FakeVirtAPI(), False)
 
-        fake_instance = {"name": "name"}
+        fake_instance = {"name": "name", "uuid": "fake-uuid"}
         fake_network_info = "network_info"
 
         def fake_fw(instance, network_info):

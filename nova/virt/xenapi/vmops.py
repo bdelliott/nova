@@ -2249,6 +2249,17 @@ class VMOps(object):
     def post_live_migration_at_destination(self, context, instance,
                                            network_info, block_migration,
                                            block_device_info):
+        # NOTE(sulo): see RM#3269 and RM#4403, we need to manually
+        # call xapi plugins to force gARP and to set instance_qos
+        # post live migration on the destination.
+        try:
+            self._session.call_plugin('post_live_migrate',
+                                      'instance_post_live_migration',
+                                      {'uuid': instance['uuid']})
+        except self._session.XenAPI.Failure:
+            # Just log that an exception occurred and carry on.
+            LOG.exception(_('Failed to call post_live_migrate plugin'))
+
         # FIXME(johngarbutt): we should block all traffic until we have
         # applied security groups, however this requires changes to XenServer
         self._prepare_instance_filter(instance, network_info)
