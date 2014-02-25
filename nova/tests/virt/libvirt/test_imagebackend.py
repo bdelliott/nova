@@ -195,6 +195,69 @@ class RawTestCase(_ImageTestCase, test.NoDBTestCase):
 
         self.mox.VerifyAll()
 
+    def test_prealloc_image(self):
+        CONF.set_override('preallocate_images', 'space')
+
+        fake_processutils.fake_execute_clear_log()
+        fake_processutils.stub_out_processutils_execute(self.stubs)
+        image = self.image_class(self.INSTANCE, self.NAME)
+
+        def fake_fetch(target, *args, **kwargs):
+            return
+
+        self.stubs.Set(os.path, 'exists', lambda _: True)
+        self.stubs.Set(os, 'access', lambda p, w: True)
+
+        # Call twice to verify testing fallocate is only called once.
+        image.cache(fake_fetch, self.TEMPLATE_PATH, self.SIZE)
+        image.cache(fake_fetch, self.TEMPLATE_PATH, self.SIZE)
+
+        self.assertEqual(fake_processutils.fake_execute_get_log(),
+            ['fallocate -n -l 1 %s.fallocate_test' % self.PATH,
+             'fallocate -n -l %s %s' % (self.SIZE, self.PATH),
+             'fallocate -n -l %s %s' % (self.SIZE, self.PATH)])
+
+    def test_prealloc_image_without_write_access(self):
+        CONF.set_override('preallocate_images', 'space')
+
+        fake_processutils.fake_execute_clear_log()
+        fake_processutils.stub_out_processutils_execute(self.stubs)
+        image = self.image_class(self.INSTANCE, self.NAME)
+
+        def fake_fetch(target, *args, **kwargs):
+            return
+
+        self.stubs.Set(image, 'check_image_exists', lambda: True)
+        self.stubs.Set(image, '_can_fallocate', lambda: True)
+        self.stubs.Set(os.path, 'exists', lambda _: True)
+        self.stubs.Set(os, 'access', lambda p, w: False)
+
+        # Testing fallocate is only called when user has write access.
+        image.cache(fake_fetch, self.TEMPLATE_PATH, self.SIZE)
+
+        self.assertEqual(fake_processutils.fake_execute_get_log(), [])
+
+
+class RawTestCase(_ImageTestCase, test.NoDBTestCase):
+
+    SIZE = 1024
+
+    def setUp(self):
+        self.image_class = imagebackend.Raw
+        super(RawTestCase, self).setUp()
+        self.stubs.Set(imagebackend.Raw, 'correct_format', lambda _: None)
+
+    def prepare_mocks(self):
+        fn = self.mox.CreateMockAnything()
+        self.mox.StubOutWithMock(imagebackend.utils.synchronized,
+                                 '__call__')
+        self.mox.StubOutWithMock(imagebackend.libvirt_utils, 'copy_image')
+        self.mox.StubOutWithMock(imagebackend.disk, 'extend')
+        return fn
+
+    def test_not_noop_mount(self):
+        self.assertFalse(imagebackend.Raw.noop_mount)
+
     def test_create_image(self):
         fn = self.prepare_mocks()
         fn(target=self.TEMPLATE_PATH, max_size=None, image_id=None)
@@ -343,6 +406,9 @@ class Qcow2TestCase(_ImageTestCase, test.NoDBTestCase):
 
         self.mox.VerifyAll()
 
+    def test_not_noop_mount(self):
+        self.assertFalse(imagebackend.Qcow2.noop_mount)
+
     def test_create_image(self):
         fn = self.prepare_mocks()
         fn(max_size=None, target=self.TEMPLATE_PATH)
@@ -476,6 +542,9 @@ class LvmTestCase(_ImageTestCase, test.NoDBTestCase):
         self.mox.StubOutWithMock(self.disk, 'get_disk_size')
         self.mox.StubOutWithMock(self.utils, 'execute')
         return fn
+
+    def test_is_noop_mount(self):
+        self.assertTrue(imagebackend.Lvm.noop_mount)
 
     def _create_image(self, sparse):
         fn = self.prepare_mocks()
@@ -678,6 +747,9 @@ class RbdTestCase(_ImageTestCase, test.NoDBTestCase):
         self.mox.StubOutWithMock(imagebackend, 'rbd')
         self.mox.StubOutWithMock(imagebackend, 'rados')
         return fn
+
+    def test_not_noop_mount(self):
+        self.assertFalse(imagebackend.Rbd.noop_mount)
 
     def test_cache(self):
         image = self.image_class(self.INSTANCE, self.NAME)

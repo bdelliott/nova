@@ -91,6 +91,7 @@ LOG = logging.getLogger(__name__)
 
 @six.add_metaclass(abc.ABCMeta)
 class Image(object):
+    noop_mount = False
 
     def __init__(self, source_type, driver_format, is_block_dev=False):
         """Image initialization.
@@ -420,6 +421,8 @@ class Qcow2(Image):
 
 
 class Lvm(Image):
+    noop_mount = True
+
     @staticmethod
     def escape(filename):
         return filename.replace('_', '__')

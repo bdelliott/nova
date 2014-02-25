@@ -133,12 +133,33 @@ class TestDiskImage(test.NoDBTestCase):
         mountdir = '/mnt/fake_rootfs'
         fakemount = FakeMount(image, mountdir, None)
 
-        def fake_instance_for_format(imgfile, mountdir, partition, imgfmt):
+        def fake_instance_for_format(imgfile, mountdir, partition, imgfmt,
+                                     noop_mount=False):
             return fakemount
 
         self.stubs.Set(mount.Mount, 'instance_for_format',
                        staticmethod(fake_instance_for_format))
         diskimage = disk_api._DiskImage(image=image, mount_dir=mountdir)
+        dev = diskimage.mount()
+        self.assertEqual(diskimage._mounter, fakemount)
+        self.assertEqual(dev, '/dev/fake')
+
+    @mock.patch('__builtin__.open')
+    def test_mount_with_noop(self, mock_open):
+        self.mock_proc_mounts(mock_open)
+        image = '/tmp/fake-image'
+        mountdir = '/mnt/fake_rootfs'
+        fakemount = FakeMount(image, mountdir, None)
+
+        def fake_instance_for_format(imgfile, mountdir, partition, imgfmt,
+                                     noop_mount=False):
+            self.assertTrue(noop_mount)
+            return fakemount
+
+        self.stubs.Set(mount.Mount, 'instance_for_format',
+                       staticmethod(fake_instance_for_format))
+        diskimage = disk_api._DiskImage(image=image, mount_dir=mountdir,
+                                        noop_mount=True)
         dev = diskimage.mount()
         self.assertEqual(diskimage._mounter, fakemount)
         self.assertEqual(dev, '/dev/fake')
@@ -151,7 +172,8 @@ class TestDiskImage(test.NoDBTestCase):
         mountdir = '/mnt/fake_rootfs'
         fakemount = FakeMount(image, mountdir, None)
 
-        def fake_instance_for_format(imgfile, mountdir, partition, imgfmt):
+        def fake_instance_for_format(imgfile, mountdir, partition, imgfmt,
+                                     noop_mount=False):
             return fakemount
 
         self.stubs.Set(mount.Mount, 'instance_for_format',
@@ -171,7 +193,8 @@ class TestDiskImage(test.NoDBTestCase):
         mountdir = '/mnt/fake_rootfs'
         fakemount = FakeMount(image, mountdir, None)
 
-        def fake_instance_for_format(imgfile, mountdir, partition, imgfmt):
+        def fake_instance_for_format(imgfile, mountdir, partition, imgfmt,
+                                     noop_mount=False):
             return fakemount
 
         self.stubs.Set(mount.Mount, 'instance_for_format',
@@ -202,7 +225,8 @@ class TestVirtDisk(test.NoDBTestCase):
         def proc_mounts(self, mount_point):
             return None
 
-        def fake_instance_for_format(imgfile, mountdir, partition, imgfmt):
+        def fake_instance_for_format(imgfile, mountdir, partition, imgfmt,
+                                     noop_mount=False):
             return FakeMount(imgfile, mountdir, partition)
 
         self.stubs.Set(os.path, 'exists', lambda _: True)
@@ -213,6 +237,27 @@ class TestVirtDisk(test.NoDBTestCase):
         self.assertEqual(disk_api.setup_container(image, container_dir),
                          '/dev/fake')
 
+    def test_lxc_setup_container_noop(self):
+        image = '/tmp/fake-image'
+        container_dir = '/mnt/fake_rootfs/'
+
+        def proc_mounts(self, mount_point):
+            return None
+
+        def fake_instance_for_format(imgfile, mountdir, partition, imgfmt,
+                                     noop_mount=False):
+            self.assertTrue(noop_mount)
+            return FakeMount(imgfile, mountdir, partition)
+
+        self.stubs.Set(os.path, 'exists', lambda _: True)
+        self.stubs.Set(disk_api._DiskImage, '_device_for_path', proc_mounts)
+        self.stubs.Set(mount.Mount, 'instance_for_format',
+                       staticmethod(fake_instance_for_format))
+
+        self.assertEqual(disk_api.setup_container(image, container_dir,
+                                                  noop_mount=True),
+                         '/dev/fake')
+
     def test_lxc_teardown_container(self):
 
         def proc_mounts(self, mount_point):
@@ -221,6 +266,7 @@ class TestVirtDisk(test.NoDBTestCase):
                 '/mnt/loop/part': '/dev/mapper/loop0p1',
                 '/mnt/nbd/nopart': '/dev/nbd15',
                 '/mnt/nbd/part': '/dev/mapper/nbd15p1',
+                '/mnt/lvm/nopart': '/dev/mapper/vgname--lvname',
             }
             return mount_points[mount_point]
 
@@ -256,6 +302,11 @@ class TestVirtDisk(test.NoDBTestCase):
                               ('qemu-nbd', '-d', '/dev/nbd15'),
                              ]
 
+        disk_api.teardown_container('/mnt/lvm/nopart')
+        expected_commands += [
+                              ('umount', '/mnt/lvm/nopart'),
+                             ]
+
         self.assertEqual(self.executes, expected_commands)
 
     def test_lxc_teardown_container_with_namespace_cleaned(self):
@@ -286,5 +337,9 @@ class TestVirtDisk(test.NoDBTestCase):
         expected_commands += [
                               ('qemu-nbd', '-d', '/dev/nbd15'),
                              ]
+
+        # NOTE(apmelton) - Should be a no-op
+        disk_api.teardown_container('/mnt/lvm/nopart',
+                                    '/dev/mapper/vgname--lvname')
 
         self.assertEqual(self.executes, expected_commands)
