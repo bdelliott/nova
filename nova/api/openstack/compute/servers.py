@@ -966,6 +966,9 @@ class Controller(wsgi.Controller):
         except exception.ImageNotFound as error:
             msg = _("Can not find requested image")
             raise exc.HTTPBadRequest(explanation=msg)
+        except exception.ImageNotAuthorized:
+            msg = _("Not allowed to boot from requested image")
+            raise exc.HTTPForbidden(explanation=msg)
         except exception.FlavorNotFound as error:
             msg = _("Invalid flavorRef provided.")
             raise exc.HTTPBadRequest(explanation=msg)

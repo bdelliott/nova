@@ -965,6 +965,9 @@ class API(base.Base):
                 self._get_bdm_image_metadata(context,
                     block_device_mapping, legacy_bdm)
 
+        if not self._check_rax_image_buildable(context, boot_meta):
+            raise exception.ImageNotAuthorized(image_id=image_id)
+
         self._check_auto_disk_config(image=boot_meta,
                                      auto_disk_config=auto_disk_config)
 
@@ -1380,6 +1383,39 @@ class API(base.Base):
                                   instance_ref, service="api")
 
         return dict(old_ref.iteritems()), dict(instance_ref.iteritems())
+
+    def _check_rax_image_buildable(self, context, boot_meta):
+        # NOTE(alaski): This is an egregious hack to minimize test changes
+        # in the rax patch.
+        if 'owner' not in boot_meta:
+            return True
+
+        # NOTE(alaski): This assumes that owner_is_tenant is set to True in
+        # Glance, which it is by default.
+        if boot_meta['owner'] == context.project_id:
+            # Always let owner build from an image
+            return True
+
+        properties = boot_meta.get('properties', {})
+
+        if 'rax_managed' in context.roles:
+            if str(properties.get('com.rackspace__1__build_managed')) != '1':
+                LOG.debug('Rax managed user attempting to build a non '
+                          'managed image')
+                return False
+        else:
+            if str(properties.get('com.rackspace__1__build_core')) != '1':
+                LOG.debug('Non managed user attempting to build a non '
+                          'core image')
+                return False
+
+        if ('rack_connect' in context.roles and
+            str(properties.get('com.rackspace__1__build_rackconnect')) != '1'):
+            LOG.debug('Rackconnect user attempting to build a non '
+                      'rackconnect image')
+            return False
+
+        return True
 
     def _check_auto_disk_config(self, instance=None, image=None,
                                 **extra_instance_updates):

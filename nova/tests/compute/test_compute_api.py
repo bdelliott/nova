@@ -1851,6 +1851,75 @@ class _ComputeAPIUnitTestMixIn(object):
         self.compute_api.volume_snapshot_delete(self.context, volume_id,
                 snapshot_id, {})
 
+    def test_check_rax_image_buildable_owner_of_image(self):
+        boot_meta = dict(owner=self.context.project_id)
+        self.assertTrue(self.compute_api._check_rax_image_buildable(
+                        self.context, boot_meta))
+
+    def test_check_rax_image_buildable_for_rax_managed(self):
+        image_properties = {'com.rackspace__1__build_managed': 1}
+        boot_meta = dict(owner='fake_owner', properties=image_properties)
+        self.context.roles.append('rax_managed')
+        self.assertTrue(self.compute_api._check_rax_image_buildable(
+                        self.context, boot_meta))
+
+    def test_check_rax_image_not_buildable_for_rax_managed(self):
+        image_properties = {'com.rackspace__1__build_managed': 0}
+        boot_meta = dict(owner='fake_owner', properties=image_properties)
+        self.context.roles.append('rax_managed')
+        self.assertFalse(self.compute_api._check_rax_image_buildable(
+                        self.context, boot_meta))
+
+    def test_check_rax_image_buildable_for_non_rax_managed(self):
+        image_properties = {'com.rackspace__1__build_core': 1}
+        boot_meta = dict(owner='fake_owner', properties=image_properties)
+        self.assertTrue(self.compute_api._check_rax_image_buildable(
+                        self.context, boot_meta))
+
+    def test_check_rax_image_not_buildable_for_non_rax_managed(self):
+        image_properties = {'com.rackspace__1__build_core': 0}
+        boot_meta = dict(owner='fake_owner', properties=image_properties)
+        self.assertFalse(self.compute_api._check_rax_image_buildable(
+                        self.context, boot_meta))
+
+    def test_check_rax_image_not_buildable_for_rackconnect(self):
+        image_properties = {'com.rackspace__1__build_rackconnect': 0}
+        boot_meta = dict(owner='fake_owner', properties=image_properties)
+        self.context.roles.append('rax_connect')
+        self.assertFalse(self.compute_api._check_rax_image_buildable(
+                        self.context, boot_meta))
+
+    def test_check_rax_image_buildable_for_rackconnect(self):
+        image_properties = {'com.rackspace__1__build_rackconnect': 1,
+                            'com.rackspace__1__build_core': 1}
+        boot_meta = dict(owner='fake_owner', properties=image_properties)
+        self.context.roles.append('rax_connect')
+        self.assertTrue(self.compute_api._check_rax_image_buildable(
+                        self.context, boot_meta))
+
+    def test_image_not_authorized_when_image_check_fails(self):
+        params = {'instance_type': 'fake', 'image_href': 'fake',
+                  'kernel_id': 1, 'ramdisk_id': 2, 'min_count': 1,
+                  'max_count': 1, 'display_name': 'fake',
+                  'display_description': 'fake', 'key_name': 'fake',
+                  'key_data': None, 'security_groups': None,
+                  'availability_zone': None, 'user_data': None, 'metadata': {},
+                  'injected_files': None, 'admin_password': None,
+                  'access_ip_v4': None, 'access_ip_v6': None,
+                  'requested_networks': None, 'config_drive': None,
+                  'block_device_mapping': None, 'auto_disk_config': None}
+        self.mox.StubOutWithMock(self.compute_api, '_get_image')
+        self.mox.StubOutWithMock(self.compute_api,
+                '_check_rax_image_buildable')
+        self.compute_api._get_image(
+                self.context, params['image_href']).AndReturn((1, {}))
+        self.compute_api._check_rax_image_buildable(
+                self.context, {}).AndReturn(False)
+        self.mox.ReplayAll()
+
+        self.assertRaises(exception.ImageNotAuthorized,
+                self.compute_api._create_instance, self.context, **params)
+
     def _create_instance_with_disabled_disk_config(self, object=False):
         sys_meta = {"image_auto_disk_config": "Disabled"}
         params = {"system_metadata": sys_meta}
