@@ -521,10 +521,6 @@ class TestNeutronv2Base(test.TestCase):
             self.moxed_client.list_subnets(
                 id=mox.SameElementsAs(['my_subid%s' % i])).AndReturn(
                     {'subnets': subnet_data})
-            self.moxed_client.list_ports(
-                network_id=subnet_data[0]['network_id'],
-                device_owner='network:dhcp').AndReturn(
-                    {'ports': []})
         self.mox.ReplayAll()
         nw_inf = api.get_instance_nw_info(self.context, instance)
         for i in xrange(0, number):
@@ -691,10 +687,6 @@ class TestNeutronv2(TestNeutronv2Base):
                         id=mox.SameElementsAs([ip['subnet_id']])
                         ).AndReturn(
                             {'subnets': [self.subnet_data_n[index]]})
-                    self.moxed_client.list_ports(
-                        network_id=current_neutron_port['network_id'],
-                        device_owner='network:dhcp').AndReturn(
-                        {'ports': self.dhcp_port_data1})
                     index += 1
         self.mox.ReplayAll()
 

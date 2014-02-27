@@ -1210,17 +1210,6 @@ class API(base_api.NetworkAPI):
                                 type='gateway'),
             }
 
-            # attempt to populate DHCP server field
-            search_opts = {'network_id': subnet['network_id'],
-                           'device_owner': 'network:dhcp'}
-            data = neutronv2.get_client(context).list_ports(**search_opts)
-            dhcp_ports = data.get('ports', [])
-            for p in dhcp_ports:
-                for ip_pair in p['fixed_ips']:
-                    if ip_pair['subnet_id'] == subnet['id']:
-                        subnet_dict['dhcp_server'] = ip_pair['ip_address']
-                        break
-
             subnet_object = network_model.Subnet(**subnet_dict)
             for dns in subnet.get('dns_nameservers', []):
                 subnet_object.add_dns(
