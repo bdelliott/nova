@@ -4096,6 +4096,15 @@ class VolumeAttachmentsSampleXmlTest(VolumeAttachmentsSampleJsonTest):
     ctype = 'xml'
 
 
+class FgMigrationsSamplesJsonTest(ApiSampleTestBaseV2):
+    extension_name = ("nova.api.openstack.compute.contrib.fg_migrations"
+                      ".Fg_migrations")
+
+
+class FgMigrationsSamplesXmlTest(ApiSampleTestBaseV2):
+    ctype = 'xml'
+
+
 class VolumeAttachUpdateSampleJsonTest(VolumeAttachmentsSampleBase):
     extends_name = ("nova.api.openstack.compute.contrib.volumes.Volumes")
     extension_name = ("nova.api.openstack.compute.contrib."

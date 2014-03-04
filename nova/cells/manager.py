@@ -460,6 +460,17 @@ class CellsManager(manager.Manager):
         if not do_cast:
             return response.value_or_raise()
 
+    def migrate_from_fg(self, ctxt, instance, image, flavor):
+        """Migrate a fg instance, this will just create a instance record."""
+        our_cell = self.state_manager.get_my_state()
+        response = self.msg_runner.migrate_from_fg(ctxt, our_cell,
+                                                   instance, image, flavor)
+        return response.value_or_raise()
+
+    def revert_fg_migration(self, ctxt, instance):
+        """Revert a fg migration."""
+        self.msg_runner.revert_fg_migration(ctxt, instance)
+
     def cell_create(self, ctxt, values):
         return self.state_manager.cell_create(ctxt, values)
 

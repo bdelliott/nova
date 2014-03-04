@@ -9,6 +9,14 @@
             "updated": "%(isotime)s"
         },
         {
+            "alias": "rax-fg-migrations",
+            "description": "%(text)s",
+            "links": [],
+            "name": "FGMigrations",
+            "namespace": "http://docs.openstack.org/compute/ext/rax-fg-migrations/api/v2.0",
+            "updated": "%(isotime)s"
+        },
+        {
             "alias": "OS-DCF",
             "description": "%(text)s",
             "links": [],

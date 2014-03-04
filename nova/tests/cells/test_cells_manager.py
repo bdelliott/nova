@@ -705,6 +705,36 @@ class CellsManagerClassTestCase(test.NoDBTestCase):
                                            instance='fake-instance',
                                            reboot_type='HARD')
 
+    def test_migrate_from_fg(self):
+        instance = 'fake_instance'
+        flavor = 'fake_instance_type'
+        image = 'fake_image'
+        parent_cell = 'parent_cell'
+        fake_response = self._get_fake_response()
+
+        self.mox.StubOutWithMock(self.cells_manager.state_manager,
+                                 'get_my_state')
+        self.cells_manager.state_manager.get_my_state().AndReturn(parent_cell)
+
+        self.mox.StubOutWithMock(self.msg_runner, 'migrate_from_fg')
+        self.msg_runner.migrate_from_fg(self.ctxt, parent_cell, instance,
+                                        image, flavor).AndReturn(fake_response)
+        self.mox.ReplayAll()
+
+        self.cells_manager. \
+            migrate_from_fg(self.ctxt, instance=instance,
+                            image='fake_image',
+                            flavor='fake_instance_type')
+
+    def test_revert_fg_migration(self):
+        self.mox.StubOutWithMock(self.msg_runner, 'revert_fg_migration')
+        self.msg_runner.revert_fg_migration(self.ctxt, 'fake-instance')
+
+        self.mox.ReplayAll()
+
+        self.cells_manager.revert_fg_migration(self.ctxt,
+                                               instance='fake-instance')
+
     def test_suspend_instance(self):
         self.mox.StubOutWithMock(self.msg_runner, 'suspend_instance')
         self.msg_runner.suspend_instance(self.ctxt, 'fake-instance')

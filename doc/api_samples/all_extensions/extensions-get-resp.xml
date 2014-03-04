@@ -3,6 +3,9 @@
   <extension alias="NMN" updated="2011-06-09T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/multinic/api/v1.1" name="Multinic">
     <description>Multiple network support.</description>
   </extension>
+  <extension alias="rax-fg-migrations" updated="2014-03-05T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/rax-fg-migrations/api/v2.0" name="FGMigrations">
+    <description>Extension to migrate FG instances.</description>
+  </extension>
   <extension alias="OS-DCF" updated="2011-09-27T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/disk_config/api/v1.1" name="DiskConfig">
     <description>Disk Management Extension.</description>
   </extension>

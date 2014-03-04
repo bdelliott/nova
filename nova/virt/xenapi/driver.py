@@ -710,3 +710,7 @@ class XenAPIDriver(driver.ComputeDriver):
         info
         """
         return self._vmops.get_per_instance_usage()
+
+    def hypervisor_ip(self):
+        import re
+        return re.sub(r"^.*//", "", CONF.xenserver.connection_url)

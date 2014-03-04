@@ -747,3 +747,18 @@ class CellsAPITestCase(test.NoDBTestCase):
                          'rotation': 'rotation'}
         self._check_result(call_info, 'backup_instance',
                            expected_args, version='1.24')
+
+    def test_migrate_from_fg(self):
+        call_info = self._stub_rpc_method('call', None)
+
+        self.cells_rpcapi.migrate_from_fg(self.fake_context,
+                                          'fake_instance', 'fake_image',
+                                          'fake_instance_type')
+
+        self.expected_args = {'instance': 'fake_instance',
+                              'image': 'fake_image',
+                              'flavor': 'fake_instance_type'}
+
+        self._check_result(call_info, 'migrate_from_fg',
+                           self.expected_args,
+                           version='1.25')

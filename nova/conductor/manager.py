@@ -794,6 +794,18 @@ class ComputeTaskManager(base.Base):
                        exc_info=True)
             raise exception.MigrationError(reason=ex)
 
+    def migrate_from_fg(self, context, instance, image, flavor):
+        hosts = self._schedule_instances(context, image, {}, instance)
+        #picking up the first valid host to migrate the fg instance
+        host_state = hosts[0]
+        (host, node) = (host_state['host'], host_state['nodename'])
+
+        return self.compute_rpcapi.allocate_resources_for_fg_instance(context,
+                                                                      host,
+                                                                      instance,
+                                                                      image,
+                                                                      node)
+
     def build_instances(self, context, instances, image, filter_properties,
             admin_password, injected_files, requested_networks,
             security_groups, block_device_mapping, legacy_bdm=True):

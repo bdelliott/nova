@@ -3,6 +3,9 @@
   <extension alias="NMN" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/multinic/api/v1.1" name="Multinic">
     <description>%(text)s</description>
   </extension>
+  <extension alias="rax-fg-migrations" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/rax-fg-migrations/api/v2.0" name="FGMigrations">
+    <description>%(text)s</description>
+  </extension>
   <extension alias="OS-DCF" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/disk_config/api/v1.1" name="DiskConfig">
     <description>%(text)s</description>
   </extension>

@@ -5811,6 +5811,28 @@ class ComputeManager(manager.Manager):
                     quotas.rollback()
                 self._set_instance_error_state(context, instance_uuid)
 
+    def allocate_resources_for_fg_instance(self, context, instance, image,
+                                           node_name):
+        info = {
+            'image_name': image.get('name', ''),
+            'message': ''}
+        #notify instance create.start
+        self._notify_about_instance_usage(context, instance, 'create.start',
+                                          extra_usage_info=info)
+
+        # TODO(coreywright): write test case for as code is untested based
+        # on how it was referencing a previously removed import
+        bdms = objects.BlockDeviceMappingList. \
+            get_by_instance_uuid(context, instance.uuid)
+
+        rt = self._get_resource_tracker(node_name)
+        with rt.instance_claim(context, instance):
+            self._default_block_device_names(context, instance, image,
+                                             bdms)
+            rt.update_usage(context, instance)
+
+        return self.driver.hypervisor_ip()
+
     @aggregate_object_compat
     @wrap_exception()
     def add_aggregate_host(self, context, aggregate, host, slave_info):

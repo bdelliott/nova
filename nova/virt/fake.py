@@ -437,6 +437,9 @@ class FakeDriver(driver.ComputeDriver):
         else:
             return stats
 
+    def hypervisor_ip(self):
+        pass
+
     def host_power_action(self, host, action):
         """Reboots, shuts down or powers up the host."""
         return action

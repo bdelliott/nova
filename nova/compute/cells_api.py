@@ -51,7 +51,7 @@ class ComputeRPCAPIRedirect(object):
                         'confirm_resize', 'reset_network',
                         'inject_network_info',
                         'backup_instance', 'snapshot_instance',
-                        'rebuild_instance']
+                        'rebuild_instance', 'revert_fg_migration']
 
     def __init__(self, cells_rpcapi):
         self.cells_rpcapi = cells_rpcapi
@@ -71,7 +71,7 @@ class ConductorTaskRPCAPIRedirect(object):
     # is for transitioning to a common interface where we can just
     # swap out the compute_task_rpcapi class with the cells_rpcapi class.
     cells_compatible = ['build_instances', 'resize_instance',
-                        'live_migrate_instance']
+                        'live_migrate_instance', 'migrate_from_fg']
 
     def __init__(self, cells_rpcapi_obj):
         self.cells_rpcapi = cells_rpcapi_obj

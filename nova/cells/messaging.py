@@ -866,6 +866,15 @@ class _TargetedMessageMethods(_BaseMessageMethods):
     def get_host_uptime(self, message, host_name):
         return self.host_api.get_host_uptime(message.ctxt, host_name)
 
+    def migrate_from_fg(self, message, migrate_from_fg_kwargs):
+        scheduler = self.msg_runner.scheduler
+        return scheduler.migrate_from_fg(message, migrate_from_fg_kwargs)
+
+    def revert_fg_migration(self, message, instance):
+        """Revert a fg migration."""
+        self._call_compute_api_with_obj(message.ctxt, instance,
+                                        'revert_fg_migration')
+
     def terminate_instance(self, message, instance):
         self._call_compute_api_with_obj(message.ctxt, instance, 'delete')
 
@@ -1728,6 +1737,20 @@ class MessageRunner(object):
 
     def terminate_instance(self, ctxt, instance):
         self._instance_action(ctxt, instance, 'terminate_instance')
+
+    def migrate_from_fg(self, ctxt, target_cell, instance, image, flavor):
+        kwargs = dict(instance=instance,
+                      image=image,
+                      flavor=flavor)
+        message = _TargetedMessage(self, ctxt, 'migrate_from_fg',
+                                   dict(migrate_from_fg_kwargs=kwargs), 'down',
+                                   target_cell,
+                                   need_response=True)
+        return message.process()
+
+    def revert_fg_migration(self, ctxt, instance):
+        """Revert a fg migration."""
+        self._instance_action(ctxt, instance, 'revert_fg_migration')
 
     def soft_delete_instance(self, ctxt, instance):
         self._instance_action(ctxt, instance, 'soft_delete_instance')

@@ -245,6 +245,11 @@ class LocalComputeTaskAPI(object):
             context, instance, scheduler_hint, True, False, None,
             block_migration, disk_over_commit, None)
 
+    def migrate_from_fg(self, context, instance, image, flavor):
+        return utils.spawn_n(self._manager.migrate_from_fg, context,
+                             instance=instance, image=image,
+                             flavor=flavor)
+
     def build_instances(self, context, instances, image,
             filter_properties, admin_password, injected_files,
             requested_networks, security_groups, block_device_mapping,
@@ -311,6 +316,11 @@ class ComputeTaskAPI(object):
 
     def __init__(self):
         self.conductor_compute_rpcapi = rpcapi.ComputeTaskAPI()
+
+    def migrate_from_fg(self, context, instance, image, flavor):
+        return self.conductor_compute_rpcapi. \
+            migrate_from_fg(context, instance=instance, image=image,
+                            flavor=flavor)
 
     def resize_instance(self, context, instance, extra_instance_updates,
                         scheduler_hint, flavor, reservations):

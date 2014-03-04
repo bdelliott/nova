@@ -9,6 +9,14 @@
             "updated": "2011-06-09T00:00:00Z"
         },
         {
+            "alias": "rax-fg-migrations",
+            "description": "Extension to migrate FG instances.",
+            "links": [],
+            "name": "FGMigrations",
+            "namespace": "http://docs.openstack.org/compute/ext/rax-fg-migrations/api/v2.0",
+            "updated": "2014-03-05T00:00:00Z"
+        },
+        {
             "alias": "OS-DCF",
             "description": "Disk Management Extension.",
             "links": [],

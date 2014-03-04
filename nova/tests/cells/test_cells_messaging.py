@@ -1355,6 +1355,21 @@ class CellsTargetedMethodsTestCase(test.TestCase):
                                  backup_type='backup-type',
                                  rotation='rotation')
 
+    def test_migrate_from_fg(self):
+        method_kwargs = {'instance': 'fake_instance',
+                         'image': 'fake_image',
+                         'flavor': 'fake_flavor'}
+        self.mox.StubOutWithMock(self.tgt_msg_runner.scheduler,
+                                 'migrate_from_fg')
+        self.tgt_msg_runner.scheduler.migrate_from_fg(self.ctxt,
+                                                      method_kwargs)\
+            .AndReturn('fake_ip')
+        self.mox.ReplayAll()
+
+        self.src_msg_runner.migrate_from_fg(self.ctxt, self.tgt_cell_name,
+                                            'fake_instance', 'fake_image',
+                                            'fake_flavor')
+
 
 class CellsBroadcastMethodsTestCase(test.TestCase):
     """Test case for _BroadcastMessageMethods class.  Most of these

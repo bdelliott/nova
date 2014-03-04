@@ -64,8 +64,22 @@ class TargetCellFilter(filters.BaseCellFilter):
             return [scheduler.state_manager.get_my_state()]
         ctxt = filter_properties['context']
 
+        if self._is_fg_migration(filter_properties):
+            return self._target_cell(cells, cell_name)
+
         scheduler.msg_runner.build_instances(ctxt, cell_name,
                 filter_properties['host_sched_kwargs'])
 
         # Returning None means to skip further scheduling, because we
         # handled it.
+
+    def _is_fg_migration(self, filter_properties):
+        return filter_properties['cell_scheduler_method'] == 'migrate_from_fg'
+
+    def _target_cell(self, cells, cell_name):
+        target_cell_name = cell_name.split('!')[-1]
+        target_cell = []
+        for cell in cells:
+            if cell.name == target_cell_name:
+                target_cell.append(cell)
+        return target_cell

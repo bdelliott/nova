@@ -1549,6 +1549,33 @@ class _BaseTaskTestCase(object):
         system_metadata['shelved_host'] = 'fake-mini'
         self.conductor_manager.unshelve_instance(self.context, instance)
 
+    def test_migrate_from_fg_should_fetch_the_hypervisor_ip(self):
+        compute_rpcapi = self.conductor_manager.compute_rpcapi
+        db_instance = jsonutils.to_primitive(self._create_fake_instance())
+        instance = instance_obj.Instance.get_by_uuid(self.context,
+                                                     db_instance['uuid'],
+                                                     expected_attrs=[
+                                                         'system_metadata'])
+        instance.save()
+        image = {'image_ref': 'temp_image_ref'}
+        instance_type = {'flavorId': 1}
+
+        self.mox.StubOutWithMock(self.conductor_manager, '_schedule_instances')
+
+        self.conductor_manager._schedule_instances(self.context, image, {},
+                                                   instance). \
+            AndReturn([{'host': 'host1', 'nodename': 'node1'}])
+        self.mox.StubOutWithMock(compute_rpcapi,
+                                 'allocate_resources_for_fg_instance')
+        compute_rpcapi.allocate_resources_for_fg_instance(self.context,
+                                                          'host1',
+                                                          instance,
+                                                          image, 'node1')
+        self.mox.ReplayAll()
+
+        self.conductor_manager.migrate_from_fg(self.context, instance,
+                                               image, instance_type)
+
     def test_unshelve_instance_schedule_and_rebuild_novalid_host(self):
         db_instance = jsonutils.to_primitive(self._create_fake_instance())
         instance = instance_obj.Instance.get_by_uuid(self.context,

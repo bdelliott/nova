@@ -250,3 +250,45 @@ class CellsScheduler(base.Base):
                                             {'vm_state': vm_states.ERROR})
                 except Exception:
                     pass
+
+    def _migrate_from_fg(self, message, target_cell, instance, image, flavor):
+        if not target_cell.is_me:
+            response = self.msg_runner.migrate_from_fg(message.ctxt,
+                                                       target_cell, instance,
+                                                       image, flavor)
+            return response.value_or_raise()
+
+        # Pop out things that will get set properly when re-creating the
+        # instance record in child cell.
+        instance.pop('info_cache')
+        instance.pop('name')
+        instance.pop('id')
+        instance.pop('security_groups')
+        instance, host_ip = self.compute_api.migrate_from_fg(message.ctxt,
+                                                             instance, image,
+                                                             flavor)
+        return host_ip
+
+    def migrate_from_fg(self, message, migrate_from_fg_kwargs):
+        image = migrate_from_fg_kwargs['image']
+        instance = migrate_from_fg_kwargs['instance']
+        flavor = migrate_from_fg_kwargs['flavor']
+        request_spec = scheduler_utils.build_request_spec(message.ctxt,
+                                                          image, [instance],
+                                                          flavor)
+        filter_properties = {
+            'scheduler_hints': {
+                'target_cell': instance['cell_name']
+            }
+        }
+        filter_properties.update({'context': message.ctxt,
+                                  'scheduler': self,
+                                  'routing_path': message.routing_path,
+                                  'host_sched_kwargs': migrate_from_fg_kwargs,
+                                  'request_spec': request_spec,
+                                  'cell_scheduler_method': 'migrate_from_fg'})
+
+        target_cells = self._grab_target_cells(filter_properties)
+
+        return self._migrate_from_fg(message, target_cells[0], instance,
+                                     image, flavor)

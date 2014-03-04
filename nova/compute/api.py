@@ -39,6 +39,7 @@ from nova.compute import task_states
 from nova.compute import utils as compute_utils
 from nova.compute import vm_states
 from nova.consoleauth import rpcapi as consoleauth_rpcapi
+from nova import context as nova_context
 from nova import crypto
 from nova.db import base
 from nova import exception
@@ -3039,6 +3040,122 @@ class API(base.Base):
                 continue
 
         return formatted_metadata_list
+
+    def migrate_from_fg(self, context, base_options, image, flavor):
+
+        # Since migrate call is made by a service account from fg, creating a
+        # RequestContext representing the actual tenant, this is required
+        # for creating default security group and updating quotas
+        user_ctxt = nova_context.RequestContext(base_options['user_id'],
+                                                base_options['project_id'],
+                                                is_admin=True)
+
+        self._check_metadata_properties_quota(context,
+                                              base_options['metadata'])
+        self._check_requested_image(context, base_options['image_ref'], image,
+                                    flavor)
+        #deriving auto_disk_config from image
+        properties_from_image = self._inherit_properties_from_image(image,
+                                                                    None)
+        base_options.update(properties_from_image)
+
+        block_device_mapping = self._check_and_transform_bdm(base_options,
+                                                             flavor, image, 1,
+                                                             1, [], True)
+        # Reserve quotas
+        num_instances, quota_reservations = self._check_num_instances_quota(
+            user_ctxt, flavor, 1, 1)
+        try:
+            instance = objects.Instance()
+            instance.update(base_options)
+
+            if not instance.obj_attr_is_set('uuid'):
+                instance['uuid'] = str(uuid.uuid4())
+
+            info_cache = instance_info_cache.InstanceInfoCache()
+            info_cache.instance_uuid = instance.uuid
+            info_cache.network_info = network_model.NetworkInfo()
+            instance.info_cache = info_cache
+
+            self.security_group_api.populate_security_groups(instance,
+                                                             ['default'])
+            self.security_group_api.ensure_default(user_ctxt)
+
+            instance.create(context)
+
+            #create bdms
+            self._validate_bdm(context, instance, flavor, block_device_mapping)
+            self._update_block_device_mapping(context, flavor,
+                                              instance['uuid'],
+                                              block_device_mapping)
+
+            notifications.send_update_with_states(context, instance, None,
+                                                  vm_states.BUILDING, None,
+                                                  None, service="api")
+
+            self._record_action_start(context, instance,
+                                      instance_actions.CREATE)
+
+            hypervisor_ip = self.compute_task_api.migrate_from_fg(context,
+                                                                  instance,
+                                                                  image,
+                                                                  flavor)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                try:
+                    #refreshing instance before destroy
+                    instance.refresh()
+                    instance.destroy()
+                except (exception.ObjectActionError,
+                        exception.InstanceNotFound):
+                    pass
+                finally:
+                    QUOTAS.rollback(user_ctxt, quota_reservations)
+
+        # Commit the reservations
+        QUOTAS.commit(user_ctxt, quota_reservations)
+        return (instance, hypervisor_ip)
+
+    @check_instance_state(vm_state=[vm_states.BUILDING],
+                          task_state=[task_states.SCHEDULING],
+                          must_have_launched=False)
+    def revert_fg_migration(self, context, instance):
+        reservations = None
+        project_id, user_id = quotas_obj.ids_from_instance(context, instance)
+        try:
+            new_type_id = instance.instance_type_id
+            reservations = self._create_reservations(context, instance,
+                                                     new_type_id, project_id,
+                                                     user_id)
+
+            if self.cell_type == 'api':
+                #Make a call to child cell and return, the instance destroy on
+                #child cell deletes the instance from parent cell.
+                self.compute_rpcapi.revert_fg_migration(context, instance)
+                if reservations:
+                    QUOTAS.commit(context, reservations, project_id=project_id,
+                                  user_id=user_id)
+                return
+
+            instance.destroy()
+
+            #delete the associated bdms
+            # TODO(coreywright): write test case for as code is untested based
+            # on how it was referencing a previously removed import
+            bdms = objects.BlockDeviceMappingList\
+               .get_by_instance_uuid(context, instance.uuid)
+            for bdm in bdms:
+                bdm.destroy()
+
+            if reservations:
+                QUOTAS.commit(context, reservations, project_id=project_id,
+                              user_id=user_id)
+        except Exception:
+            with excutils.save_and_reraise_exception():
+                if reservations:
+                    QUOTAS.rollback(context, reservations,
+                                    project_id=project_id,
+                                    user_id=user_id)
 
     @wrap_check_policy
     @check_instance_lock

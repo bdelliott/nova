@@ -389,6 +389,11 @@ class ComputeTaskAPI(object):
         serializer = objects_base.NovaObjectSerializer()
         self.client = rpc.get_client(target, serializer=serializer)
 
+    def migrate_from_fg(self, context, instance, image, flavor):
+        cctxt = self.client.prepare(version='1.6')
+        return cctxt.call(context, 'migrate_from_fg', instance=instance,
+                          image=image, flavor=flavor)
+
     def migrate_server(self, context, instance, scheduler_hint, live, rebuild,
                   flavor, block_migration, disk_over_commit,
                   reservations=None):

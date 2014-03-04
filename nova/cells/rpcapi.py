@@ -555,6 +555,17 @@ class CellsAPI(object):
         cctxt = self.client.prepare(version='1.21')
         cctxt.cast(ctxt, 'confirm_resize', instance=instance)
 
+    def migrate_from_fg(self, ctxt, instance, image, flavor):
+        """RAX api to migrate First-Gen instances."""
+        cctxt = self.client.prepare(version='1.25')
+        return cctxt.call(ctxt, 'migrate_from_fg', instance=instance,
+                          image=image, flavor=flavor)
+
+    def revert_fg_migration(self, ctxt, instance):
+        """RAX api to revert migrate First-Gen instances."""
+        cctxt = self.client.prepare(version='1.25')
+        return cctxt.cast(ctxt, 'revert_fg_migration', instance=instance)
+
     def reset_network(self, ctxt, instance):
         """Reset networking for an instance."""
         if not CONF.cells.enable:

@@ -967,6 +967,21 @@ class ComputeAPI(object):
                 version=version)
         cctxt.cast(ctxt, 'shelve_offload_instance', instance=instance)
 
+    def allocate_resources_for_fg_instance(self, context, host, instance,
+                                           image, node):
+        """RAX api to migrate First-Gen instances."""
+        cctxt = self.client.prepare(
+            server=host,
+            version='3.23')
+        return cctxt.call(context, 'allocate_resources_for_fg_instance',
+                          instance=instance, image=image, node_name=node)
+
+    def revert_fg_migration(self, context, instance):
+        """RAX api to migrate First-Gen instances,
+        this method would never be called, required only for tests.
+        """
+        pass
+
     def unshelve_instance(self, ctxt, instance, host, image=None,
                           filter_properties=None, node=None):
         msg_kwargs = {'instance': instance, 'image': image}
