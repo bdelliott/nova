@@ -293,7 +293,7 @@ class TestCase(testtools.TestCase):
 
         self.messaging_conf = messaging_conffixture.ConfFixture(CONF)
         self.messaging_conf.transport_driver = 'fake'
-        self.messaging_conf.response_timeout = 15
+        self.messaging_conf.response_timeout = 60
         self.useFixture(self.messaging_conf)
 
         rpc.init(CONF)
