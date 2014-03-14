@@ -16,6 +16,8 @@
 Tests For Scheduler Host Filters.
 """
 
+import mock
+
 from nova import context
 from nova.scheduler import filters
 from nova.scheduler import host_manager
@@ -80,14 +82,16 @@ class RackspaceHostFiltersTestCase(test.TestCase):
 
     def test_rackspace_filter_ram_check_passes_30g(self):
         filt_props = {'instance_type': {'memory_mb': 30 * 1024}}
+        free_ram = 30 * 1024 + 245
         host = fakes.FakeHostState('host1', 'node1',
-                {'free_ram_mb': 30 * 1024})
+                {'free_ram_mb': free_ram})
         self.assertTrue(self.filt_cls._ram_check_filter(host, filt_props))
 
     def test_rackspace_filter_ram_check_passes(self):
         filt_props = {'instance_type': {'memory_mb': 1024}}
+        free_ram = 1024 + 1024 + 13
         host = fakes.FakeHostState('host1', 'node1',
-                {'free_ram_mb': 2048})
+                {'free_ram_mb': free_ram})
         self.assertTrue(self.filt_cls._ram_check_filter(host, filt_props))
 
     def test_rackspace_filter_flags_no_reserve(self):
@@ -97,7 +101,10 @@ class RackspaceHostFiltersTestCase(test.TestCase):
 
         filt_props = {'instance_type': {'memory_mb': 4096}}
         host = fakes.FakeHostState('host1', 'node1', {'free_ram_mb': 4096})
-        self.assertTrue(self.filt_cls._ram_check_filter(host, filt_props))
+
+        with mock.patch.object(self.filt_cls,
+                "_estimate_instance_overhead", return_value=0):
+            self.assertTrue(self.filt_cls._ram_check_filter(host, filt_props))
 
     def test_rackspace_filter_flags_reserve_fail(self):
         # flavor + reserve > free ram:
@@ -106,7 +113,9 @@ class RackspaceHostFiltersTestCase(test.TestCase):
 
         filt_props = {'instance_type': {'memory_mb': 4095}}
         host = fakes.FakeHostState('host1', 'node1', {'free_ram_mb': 4096})
-        self.assertFalse(self.filt_cls._ram_check_filter(host, filt_props))
+        with mock.patch.object(self.filt_cls,
+                "_estimate_instance_overhead", return_value=0):
+            self.assertFalse(self.filt_cls._ram_check_filter(host, filt_props))
 
     def test_rackspace_filter_flags_reserve_pass(self):
         # flavor + reserve amount = free_ram:
@@ -116,7 +125,9 @@ class RackspaceHostFiltersTestCase(test.TestCase):
         filt_props = {'instance_type': {'memory_mb': 4095}}
         host = fakes.FakeHostState('host1', 'node1',
                 {'free_ram_mb': 4096})
-        self.assertTrue(self.filt_cls._ram_check_filter(host, filt_props))
+        with mock.patch.object(self.filt_cls,
+                "_estimate_instance_overhead", return_value=0):
+            self.assertTrue(self.filt_cls._ram_check_filter(host, filt_props))
 
     def _create_hosts(self, num_instances_mod, num_hosts=50):
         hosts = []
@@ -177,3 +188,25 @@ class RackspaceHostFiltersTestCase(test.TestCase):
         self.assertEqual(len(filtered_hosts), len(hosts) - num_empty)
         empties = [x for x in filtered_hosts if not x.num_instances]
         self.assertEqual(len(empties), 0)
+
+    def test_estimate_instance_overhead_one_vcpu(self):
+        actual = self.filt_cls._estimate_instance_overhead(1024, 1)
+        self.assertEqual(13, actual)
+
+    def test_estimate_instance_overhead_one_vcpu_30g(self):
+        actual = self.filt_cls._estimate_instance_overhead(30 * 1024, 1)
+        self.assertEqual(245, actual)
+
+    def test_estimate_instance_overhead_two_vcpus(self):
+        actual = self.filt_cls._estimate_instance_overhead(1024, 2)
+        self.assertEqual(14, actual)
+
+    def test_estimate_used_memory_mb_no_vpus(self):
+        instance_type = {'memory_mb': 1024}
+        actual = self.filt_cls._estimate_used_memory_mb(instance_type)
+        self.assertEqual(1037, actual)
+
+    def test_estimate_used_memory_mb_with_vpus(self):
+        instance_type = {'memory_mb': 1024, 'vcpus': 2}
+        actual = self.filt_cls._estimate_used_memory_mb(instance_type)
+        self.assertEqual(1038, actual)

@@ -13,6 +13,8 @@
 #    License for the specific language governing permissions and limitations
 #    under the License.
 
+import math
+
 from oslo.config import cfg
 
 from nova.openstack.common import log as logging
@@ -49,6 +51,10 @@ CONF.register_opts(filter_opts)
 
 LOG = logging.getLogger(__name__)
 
+OVERHEAD_BASE = 3
+OVERHEAD_PER_MB = 0.00781
+OVERHEAD_PER_VCPU = 1.5
+
 
 class RackspaceFilter(filters.BaseHostFilter):
     """Rackspace hard rule filtering."""
@@ -79,9 +85,11 @@ class RackspaceFilter(filters.BaseHostFilter):
         for instances < `rackspace_ram_check_threshold`G.  This is an
         attempt to reduce issues with racing for resources on hosts that
         are nearly full and the extra overhead that Xen uses per VM.
+        In addition we add in the estimated RAM overheads, using the same
+        calculation used in the ResourceManager on the compute node.
         """
         instance_type = filter_properties.get('instance_type')
-        requested_ram = instance_type['memory_mb']
+        requested_ram = self._estimate_used_memory_mb(instance_type)
         free_ram_mb = host_state.free_ram_mb
         if requested_ram < CONF.rackspace_ram_check_threshold:
             extra_reserve = CONF.rackspace_ram_check_reserve
@@ -93,6 +101,19 @@ class RackspaceFilter(filters.BaseHostFilter):
                     "Need %(requested_ram)sMB + %(extra_reserve)sMB reserve",
                     locals())
         return passes
+
+    def _estimate_used_memory_mb(self, instance_type):
+        memory_mb = instance_type['memory_mb']
+        vcpus = instance_type.get('vcpus', 1)
+        overhead = self._estimate_instance_overhead(memory_mb, vcpus)
+        return memory_mb + overhead
+
+    def _estimate_instance_overhead(self, memory_mb, vcpus):
+        #TODO(johngarbutt) we need to share code with xenapi/driver.py
+        overhead = (OVERHEAD_BASE
+                    + (memory_mb * OVERHEAD_PER_MB)
+                    + (vcpus * OVERHEAD_PER_VCPU))
+        return int(math.ceil(overhead))
 
     def _host_passes(self, host_state, filter_properties):
         """Rackspace server best match hard rules."""
