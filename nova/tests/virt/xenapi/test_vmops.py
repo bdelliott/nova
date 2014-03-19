@@ -19,6 +19,7 @@ import mock
 from nova.compute import power_state
 from nova.compute import task_states
 from nova import exception
+from nova.openstack.common.gettextutils import _
 from nova.pci import pci_manager
 from nova import test
 from nova.tests.virt.xenapi import stubs
@@ -266,7 +267,8 @@ class SpawnTestCase(VMOpsTestBase):
         di_type = "di_type"
         vm_utils.determine_disk_image_type(image_meta).AndReturn(di_type)
         step = 1
-        self.vmops._update_instance_progress(context, instance, step, steps)
+        self.vmops._update_instance_progress(context, instance, step, steps,
+                                             None)
 
         vdis = {"other": {"ref": "fake_ref_2", "osvol": True}}
         if include_root_vdi:
@@ -276,14 +278,18 @@ class SpawnTestCase(VMOpsTestBase):
                     block_device_info=block_device_info).AndReturn(vdis)
         self.vmops._resize_up_vdis(instance, vdis)
         step += 1
-        self.vmops._update_instance_progress(context, instance, step, steps)
+        message = _('Created disks')
+        self.vmops._update_instance_progress(context, instance, step, steps,
+                                             message)
 
         kernel_file = "kernel"
         ramdisk_file = "ramdisk"
         vm_utils.create_kernel_and_ramdisk(context, session,
                 instance, name_label).AndReturn((kernel_file, ramdisk_file))
         step += 1
-        self.vmops._update_instance_progress(context, instance, step, steps)
+        message = _('Created kernel ramdisk')
+        self.vmops._update_instance_progress(context, instance, step, steps,
+                                             message)
 
         vm_ref = "fake_vm_ref"
         self.vmops._ensure_instance_name_unique(name_label)
@@ -292,7 +298,9 @@ class SpawnTestCase(VMOpsTestBase):
                 di_type, kernel_file,
                 ramdisk_file, image_meta).AndReturn(vm_ref)
         step += 1
-        self.vmops._update_instance_progress(context, instance, step, steps)
+        message = _('Created VM record')
+        self.vmops._update_instance_progress(context, instance, step, steps,
+                                             message)
 
         self.vmops._attach_disks(instance, vm_ref, name_label, vdis, di_type,
                           network_info, admin_password, injected_files)
@@ -321,7 +329,9 @@ class SpawnTestCase(VMOpsTestBase):
         else:
             pci_manager.get_instance_pci_devs(instance).AndReturn([])
         step += 1
-        self.vmops._update_instance_progress(context, instance, step, steps)
+        message = _('Attached devices')
+        self.vmops._update_instance_progress(context, instance, step, steps,
+                                             message)
 
         self.vmops._inject_instance_metadata(instance, vm_ref)
         self.vmops._inject_auto_disk_config(instance, vm_ref)
@@ -330,7 +340,9 @@ class SpawnTestCase(VMOpsTestBase):
                                             network_info)
         self.vmops.inject_network_info(instance, network_info, vm_ref)
         step += 1
-        self.vmops._update_instance_progress(context, instance, step, steps)
+        message = _('Injected instance data')
+        self.vmops._update_instance_progress(context, instance, step, steps,
+                                             message)
 
         self.vmops._create_vifs(instance, vm_ref, network_info)
         self.vmops.firewall_driver.setup_basic_filtering(instance,
@@ -338,29 +350,37 @@ class SpawnTestCase(VMOpsTestBase):
         self.vmops.firewall_driver.prepare_instance_filter(instance,
                                                            network_info)
         step += 1
-        self.vmops._update_instance_progress(context, instance, step, steps)
+        message = _('Setup network')
+        self.vmops._update_instance_progress(context, instance, step, steps,
+                                             message)
 
         if rescue:
             self.vmops._attach_orig_disk_for_rescue(instance, vm_ref)
             step += 1
+            message = _('Attached root disk')
             self.vmops._update_instance_progress(context, instance, step,
-                                                 steps)
+                                                 steps, message)
         self.vmops._start(instance, vm_ref)
         self.vmops._wait_for_instance_to_start(instance, vm_ref)
         step += 1
-        self.vmops._update_instance_progress(context, instance, step, steps)
+        message = _('Booted instance')
+        self.vmops._update_instance_progress(context, instance, step, steps,
+                                             message)
 
         self.vmops._configure_new_instance_with_agent(instance, vm_ref,
                 injected_files, admin_password)
         self.vmops._remove_hostname(instance, vm_ref)
         step += 1
-        self.vmops._update_instance_progress(context, instance, step, steps)
+        message = _('Configured booted instance')
+        self.vmops._update_instance_progress(context, instance, step, steps,
+                                             message)
 
         self.vmops.firewall_driver.apply_instance_filter(instance,
                                                          network_info)
         step += 1
+        message = _('Applied security group filters')
         last_call = self.vmops._update_instance_progress(context, instance,
-                                                         step, steps)
+                                                         step, steps, message)
         if throw_exception:
             last_call.AndRaise(throw_exception)
             self.vmops._destroy(instance, vm_ref, network_info=network_info)
@@ -452,8 +472,9 @@ class SpawnTestCase(VMOpsTestBase):
         self.vmops.firewall_driver.apply_instance_filter(instance,
                                                          network_info)
 
+        message = _('Resize completed')
         last_call = self.vmops._update_instance_progress(context, instance,
-                                                        step=5, total_steps=5)
+                step=5, total_steps=5, message=message)
         if throw_exception:
             last_call.AndRaise(throw_exception)
             self.vmops._destroy(instance, vm_ref, network_info=network_info)
@@ -691,10 +712,13 @@ class MigrateDiskResizingUpTestCase(VMOpsTestBase):
         self.assertEqual(m_vhd_expected, mock_migrate_vhd.call_args_list)
 
         prog_expected = [
-            mock.call(context, instance, 1, 5),
-            mock.call(context, instance, 2, 5),
-            mock.call(context, instance, 3, 5),
-            mock.call(context, instance, 4, 5)
+            mock.call(context, instance, 1, 5, None),
+            mock.call(context, instance, 2, 5,
+                      _('Transferred immutable VHDs')),
+            mock.call(context, instance, 3, 5,
+                      _('Powered down and transferred leaf VHDs')),
+            mock.call(context, instance, 4, 5,
+                      _('Transferred ephemeral disks'))
             # 5/5: step to be executed by finish migration.
             ]
         self.assertEqual(prog_expected, mock_update_progress.call_args_list)
@@ -737,10 +761,13 @@ class MigrateDiskResizingUpTestCase(VMOpsTestBase):
         self.assertEqual(m_vhd_expected, mock_migrate_vhd.call_args_list)
 
         prog_expected = [
-            mock.call(context, instance, 1, 5),
-            mock.call(context, instance, 2, 5),
-            mock.call(context, instance, 3, 5),
-            mock.call(context, instance, 4, 5)
+            mock.call(context, instance, 1, 5, None),
+            mock.call(context, instance, 2, 5,
+                      _('Transferred immutable VHDs')),
+            mock.call(context, instance, 3, 5,
+                      _('Powered down and transferred leaf VHDs')),
+            mock.call(context, instance, 4, 5,
+                      _('Transferred ephemeral disks'))
             # 5/5: step to be executed by finish migration.
             ]
         self.assertEqual(prog_expected, mock_update_progress.call_args_list)
@@ -948,11 +975,48 @@ class MigrateDiskResizingDownTestCase(VMOpsTestBase):
             new_vdi_ref)
 
         prog_expected = [
-            mock.call(context, instance, 1, 5),
-            mock.call(context, instance, 2, 5),
-            mock.call(context, instance, 3, 5),
-            mock.call(context, instance, 4, 5)
+            mock.call(context, instance, 1, 5, None),
+            mock.call(context, instance, 2, 5,
+                      _('Renamed and powerd off VM')),
+            mock.call(context, instance, 3, 5,
+                      _('Created vdi copy and resized')),
+            mock.call(context, instance, 4, 5,
+                      _('Transferred VHD to destination'))
             # 5/5: step to be executed by finish migration.
             ]
         self.assertEqual(prog_expected,
                          mock_update_instance_progress.call_args_list)
+
+
+class StepDecoratorTestCase(VMOpsTestBase):
+
+    def setUp(self):
+        super(StepDecoratorTestCase, self).setUp()
+        self.context = 'context'
+        self.instance = {'uuid': 'fake'}
+
+        self.mock_update = mock.Mock()
+        self.vmops._virtapi.instance_update = self.mock_update
+
+        self.step = vmops.make_step_decorator(self.context, self.instance,
+                self.vmops._update_instance_progress)
+
+    def test_step_with_message(self):
+        message = _('hello')
+
+        @self.step(message)
+        def foo():
+            return 42
+
+        self.assertEqual(42, foo())
+        self.mock_update.assert_called_once_with(self.context,
+                self.instance['uuid'], {'progress': 100.0}, message=message)
+
+    def test_step_without_message(self):
+        @self.step
+        def foo():
+            return 0xdeadbeef
+
+        self.assertEqual(0xdeadbeef, foo())
+        self.mock_update.assert_called_once_with(self.context,
+                self.instance['uuid'], {'progress': 100.0}, message=None)

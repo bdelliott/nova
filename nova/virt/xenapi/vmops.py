@@ -133,23 +133,36 @@ def make_step_decorator(context, instance, update_instance_progress,
     """
     step_info = dict(total=total_offset, current=0)
 
-    def bump_progress():
-        step_info['current'] += 1
-        update_instance_progress(context, instance,
-                                 step_info['current'], step_info['total'])
+    def step_with_message(msg_or_fn):
 
-    def step_decorator(f):
-        step_info['total'] += 1
+        def bump_progress():
+            step_info['current'] += 1
+            message = None
+            if not callable(msg_or_fn):
+                message = msg_or_fn
+            update_instance_progress(context, instance, step_info['current'],
+                                     step_info['total'], message)
 
-        @functools.wraps(f)
-        def inner(*args, **kwargs):
-            rv = f(*args, **kwargs)
-            bump_progress()
-            return rv
+        def step_decorator(f):
+            step_info['total'] += 1
 
-        return inner
+            @functools.wraps(f)
+            def inner(*args, **kwargs):
+                rv = f(*args, **kwargs)
+                bump_progress()
+                return rv
 
-    return step_decorator
+            return inner
+
+        if callable(msg_or_fn):
+            # decorator called with no message (i.e. @step)
+            return step_decorator(msg_or_fn)
+
+        else:
+            # decorator called with a message (i.e. @step('hello'))
+            return step_decorator
+
+    return step_with_message
 
 
 class VMOps(object):
@@ -268,8 +281,14 @@ class VMOps(object):
                          network_info, image_meta, resize_instance,
                          block_device_info=None, power_on=True):
 
-        def null_step_decorator(f):
-            return f
+        def null_step_decorator(msg_or_fn):
+            if callable(msg_or_fn):
+                return msg_or_fn
+            else:
+                def null_step_dec_inner(f):
+                    return f
+
+                return null_step_dec_inner
 
         def create_disks_step(undo_mgr, disk_image_type, image_meta,
                               name_label):
@@ -290,7 +309,8 @@ class VMOps(object):
         def completed_callback():
             self._update_instance_progress(context, instance,
                                            step=5,
-                                           total_steps=RESIZE_TOTAL_STEPS)
+                                           total_steps=RESIZE_TOTAL_STEPS,
+                                           message='Resize completed')
 
         self._spawn(context, instance, image_meta, null_step_decorator,
                     create_disks_step, first_boot=False, injected_files=None,
@@ -337,7 +357,7 @@ class VMOps(object):
         step = make_step_decorator(context, instance,
                                    self._update_instance_progress)
 
-        @step
+        @step(_('Created disks'))
         def create_disks_step(undo_mgr, disk_image_type, image_meta,
                               name_label):
             vdis = vm_utils.get_vdis_for_instance(context, self._session,
@@ -413,7 +433,7 @@ class VMOps(object):
         def determine_disk_image_type_step(undo_mgr):
             return vm_utils.determine_disk_image_type(image_meta)
 
-        @step
+        @step(_('Created kernel ramdisk'))
         def create_kernel_ramdisk_step(undo_mgr):
             kernel_file, ramdisk_file = vm_utils.create_kernel_and_ramdisk(
                     context, self._session, instance, name_label)
@@ -425,7 +445,7 @@ class VMOps(object):
             undo_mgr.undo_with(undo_create_kernel_ramdisk)
             return kernel_file, ramdisk_file
 
-        @step
+        @step(_('Created VM record'))
         def create_vm_record_step(undo_mgr, disk_image_type,
                                   kernel_file, ramdisk_file):
             vm_ref = self._create_vm_record(context, instance, name_label,
@@ -438,7 +458,7 @@ class VMOps(object):
             undo_mgr.undo_with(undo_create_vm)
             return vm_ref
 
-        @step
+        @step(_('Attached devices'))
         def attach_devices_step(undo_mgr, vm_ref, vdis, disk_image_type):
             attach_disks(undo_mgr, vm_ref, vdis, disk_image_type)
             attach_pci_devices(undo_mgr, vm_ref)
@@ -447,7 +467,7 @@ class VMOps(object):
             # NOTE(johannes): Attach root disk to rescue VM now, before
             # booting the VM, since we can't hotplug block devices
             # on non-PV guests
-            @step
+            @step(_('Attached root disk'))
             def attach_root_disk_step(undo_mgr, vm_ref):
                 vbd_ref = self._attach_orig_disk_for_rescue(instance, vm_ref)
 
@@ -458,7 +478,7 @@ class VMOps(object):
 
                 undo_mgr.undo_with(undo_attach_root_disk)
 
-        @step
+        @step(_('Injected instance data'))
         def inject_instance_data_step(undo_mgr, vm_ref, vdis):
             self._inject_instance_metadata(instance, vm_ref)
             self._inject_auto_disk_config(instance, vm_ref)
@@ -469,25 +489,25 @@ class VMOps(object):
             self._file_inject_vm_settings(instance, vm_ref, vdis, network_info)
             self.inject_network_info(instance, network_info, vm_ref)
 
-        @step
+        @step(_('Setup network'))
         def setup_network_step(undo_mgr, vm_ref):
             self._create_vifs(instance, vm_ref, network_info)
             self._prepare_instance_filter(instance, network_info)
 
-        @step
+        @step(_('Booted instance'))
         def boot_instance_step(undo_mgr, vm_ref):
             if power_on:
                 self._start(instance, vm_ref)
                 self._wait_for_instance_to_start(instance, vm_ref)
 
-        @step
+        @step(_('Configured booted instance'))
         def configure_booted_instance_step(undo_mgr, vm_ref):
             if first_boot:
                 self._configure_new_instance_with_agent(instance, vm_ref,
                         injected_files, admin_password)
                 self._remove_hostname(instance, vm_ref)
 
-        @step
+        @step(_('Applied security group filters'))
         def apply_security_group_filters_step(undo_mgr):
             self.firewall_driver.apply_instance_filter(instance, network_info)
 
@@ -759,7 +779,8 @@ class VMOps(object):
     def _get_orig_vm_name_label(self, instance):
         return instance['name'] + '-orig'
 
-    def _update_instance_progress(self, context, instance, step, total_steps):
+    def _update_instance_progress(self, context, instance, step, total_steps,
+                                  message=None):
         """Update instance progress percent to reflect current step number
         """
         # FIXME(sirp): for now we're taking a KISS approach to instance
@@ -775,7 +796,7 @@ class VMOps(object):
         LOG.debug(_("Updating progress to %d"), progress,
                   instance=instance)
         self._virtapi.instance_update(context, instance['uuid'],
-                                      {'progress': progress})
+                                      {'progress': progress}, message=message)
 
     def _resize_ensure_vm_is_shutdown(self, instance, vm_ref):
         if vm_utils.is_vm_shutdown(self._session, vm_ref):
@@ -799,7 +820,7 @@ class VMOps(object):
         def fake_step_to_match_resizing_up():
             pass
 
-        @step
+        @step(_('Renamed and powerd off VM'))
         def rename_and_power_off_vm(undo_mgr):
             self._resize_ensure_vm_is_shutdown(instance, vm_ref)
             self._apply_orig_vm_name_label(instance, vm_ref)
@@ -810,7 +831,7 @@ class VMOps(object):
 
             undo_mgr.undo_with(restore_orig_vm)
 
-        @step
+        @step(_('Created vdi copy and resized'))
         def create_copy_vdi_and_resize(undo_mgr, old_vdi_ref):
             new_vdi_ref, new_vdi_uuid = vm_utils.resize_disk(self._session,
                 instance, old_vdi_ref, flavor)
@@ -822,7 +843,7 @@ class VMOps(object):
 
             return new_vdi_ref, new_vdi_uuid
 
-        @step
+        @step(_('Transferred VHD to destination'))
         def transfer_vhd_to_dest(new_vdi_ref, new_vdi_uuid):
             vm_utils.migrate_vhd(self._session, instance, new_vdi_uuid,
                                  dest, sr_path, 0)
@@ -884,7 +905,7 @@ class VMOps(object):
         def fake_step_to_show_snapshot_complete():
             pass
 
-        @step
+        @step(_('Transferred immutable VHDs'))
         def transfer_immutable_vhds(root_vdi_uuids):
             active_root_vdi_uuid = root_vdi_uuids[0]
             immutable_root_vdi_uuids = root_vdi_uuids[1:]
@@ -949,7 +970,7 @@ class VMOps(object):
                 return _process_ephemeral_chain_recursive(remaining_chains,
                                                           active_vdi_uuids)
 
-        @step
+        @step(_('Transferred ephemeral disks'))
         def transfer_ephemeral_disks_then_all_leaf_vdis():
             ephemeral_chains = vm_utils.get_all_vdi_uuids_for_vm(
                     self._session, vm_ref,
@@ -962,7 +983,7 @@ class VMOps(object):
 
             _process_ephemeral_chain_recursive(ephemeral_chains, [])
 
-        @step
+        @step(_('Powered down and transferred leaf VHDs'))
         def power_down_and_transfer_leaf_vhds(root_vdi_uuid,
                                               ephemeral_vdi_uuids=None):
             self._resize_ensure_vm_is_shutdown(instance, vm_ref)

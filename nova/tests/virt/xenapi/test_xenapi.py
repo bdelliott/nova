@@ -1850,18 +1850,23 @@ class XenAPIMigrateInstance(stubs.XenAPITestBase):
         flavor = "type"
         sr_path = "sr_path"
 
-        virtapi.instance_update(self.context, 'uuid', {'progress': 20.0})
+        virtapi.instance_update(self.context, 'uuid', {'progress': 20.0},
+                                message=None)
         vmops._resize_ensure_vm_is_shutdown(instance, vm_ref)
         vmops._apply_orig_vm_name_label(instance, vm_ref)
         old_vdi_ref = "old_ref"
         vm_utils.get_vdi_for_vm_safely(vmops._session, vm_ref).AndReturn(
             (old_vdi_ref, None))
-        virtapi.instance_update(self.context, 'uuid', {'progress': 40.0})
+        message = _('Renamed and powerd off VM')
+        virtapi.instance_update(self.context, 'uuid', {'progress': 40.0},
+                                message=message)
         new_vdi_ref = "new_ref"
         new_vdi_uuid = "new_uuid"
         vm_utils.resize_disk(vmops._session, instance, old_vdi_ref,
             flavor).AndReturn((new_vdi_ref, new_vdi_uuid))
-        virtapi.instance_update(self.context, 'uuid', {'progress': 60.0})
+        message = _('Created vdi copy and resized')
+        virtapi.instance_update(self.context, 'uuid', {'progress': 60.0},
+                                message=message)
         vm_utils.migrate_vhd(vmops._session, instance, new_vdi_uuid, dest,
                              sr_path, 0).AndRaise(
                                 exception.ResizeError(reason="asdf"))
