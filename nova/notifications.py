@@ -101,11 +101,11 @@ def send_api_fault(url, status, exception):
     rpc.get_notifier('api').error(None, 'api.fault', payload)
 
 
-def send_update(context, old_instance, new_instance, service=None, host=None):
+def send_update(context, old_instance, new_instance, service=None, host=None,
+                message=None):
     """Send compute.instance.update notification to report any changes occurred
     in that instance
     """
-
     if not CONF.notify_on_state_change:
         # skip all this if updates are disabled
         return
@@ -133,7 +133,8 @@ def send_update(context, old_instance, new_instance, service=None, host=None):
         # value of verify_states need not be True as the check for states is
         # already done here
         send_update_with_states(context, new_instance, old_vm_state,
-                new_vm_state, old_task_state, new_task_state, service, host)
+                new_vm_state, old_task_state, new_task_state, service, host,
+                message=message)
 
     else:
         try:
@@ -142,7 +143,8 @@ def send_update(context, old_instance, new_instance, service=None, host=None):
                 old_display_name = old_instance["display_name"]
             _send_instance_update_notification(context, new_instance,
                     service=service, host=host,
-                    old_display_name=old_display_name)
+                    old_display_name=old_display_name,
+                    message=message)
         except Exception:
             LOG.exception(_("Failed to send state update notification"),
                     instance=new_instance)
@@ -150,7 +152,7 @@ def send_update(context, old_instance, new_instance, service=None, host=None):
 
 def send_update_with_states(context, instance, old_vm_state, new_vm_state,
         old_task_state, new_task_state, service="compute", host=None,
-        verify_states=False):
+        verify_states=False, message=None):
     """Send compute.instance.update notification to report changes if there
     are any, in the instance
     """
@@ -182,7 +184,7 @@ def send_update_with_states(context, instance, old_vm_state, new_vm_state,
             _send_instance_update_notification(context, instance,
                     old_vm_state=old_vm_state, old_task_state=old_task_state,
                     new_vm_state=new_vm_state, new_task_state=new_task_state,
-                    service=service, host=host)
+                    service=service, host=host, message=message)
         except Exception:
             LOG.exception(_("Failed to send state update notification"),
                     instance=instance)
@@ -190,7 +192,7 @@ def send_update_with_states(context, instance, old_vm_state, new_vm_state,
 
 def _send_instance_update_notification(context, instance, old_vm_state=None,
             old_task_state=None, new_vm_state=None, new_task_state=None,
-            service="compute", host=None, old_display_name=None):
+            service="compute", host=None, old_display_name=None, message=None):
     """Send 'compute.instance.update' notification to inform observers
     about instance state changes.
     """
@@ -223,6 +225,11 @@ def _send_instance_update_notification(context, instance, old_vm_state=None,
     # add old display name if it is changed
     if old_display_name:
         payload["old_display_name"] = old_display_name
+
+    # add a human readable message to identify the purpose of the update
+    if not message:
+        message = ''
+    payload["message"] = message
 
     rpc.get_notifier(service, host).info(context,
                                          'compute.instance.update', payload)

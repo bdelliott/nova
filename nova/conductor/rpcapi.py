@@ -131,8 +131,8 @@ class ConductorAPI(object):
     ...  - Remove instance_get()
     ...  - Remove migration_update()
     ...  - Remove block_device_mapping_destroy()
-
     2.0  - Drop backwards compatibility
+    2.01 - Added message kwarg to instance_update()
     """
 
     VERSION_ALIASES = {
@@ -152,13 +152,14 @@ class ConductorAPI(object):
                                      serializer=serializer)
 
     def instance_update(self, context, instance_uuid, updates,
-                        service=None):
+                        service=None, message=None):
         updates_p = jsonutils.to_primitive(updates)
         cctxt = self.client.prepare()
         return cctxt.call(context, 'instance_update',
                           instance_uuid=instance_uuid,
                           updates=updates_p,
-                          service=service)
+                          service=service,
+                          message=message)
 
     def instance_get_by_uuid(self, context, instance_uuid,
                              columns_to_join=None):

@@ -1401,7 +1401,8 @@ class ComputeManagerBuildInstanceTestCase(test.NoDBTestCase):
         self._notify_about_instance_usage('create.end',
                 fault=exc, stub=False)
         conductor_rpcapi.ConductorAPI.instance_update(
-            self.context, self.instance['uuid'], mox.IgnoreArg(), 'conductor')
+            self.context, self.instance['uuid'], mox.IgnoreArg(), 'conductor',
+            message=None)
         self.mox.ReplayAll()
 
         self.assertRaises(exception.InstanceNotFound,
@@ -1428,7 +1429,8 @@ class ComputeManagerBuildInstanceTestCase(test.NoDBTestCase):
                 network_info=self.network_info,
                 block_device_info=self.block_device_info).AndRaise(exc)
         conductor_rpcapi.ConductorAPI.instance_update(
-            self.context, self.instance['uuid'], mox.IgnoreArg(), 'conductor')
+            self.context, self.instance['uuid'], mox.IgnoreArg(), 'conductor',
+            message=None)
         self._notify_about_instance_usage('create.error',
             fault=exc, stub=False)
         self.mox.ReplayAll()
@@ -1487,7 +1489,7 @@ class ComputeManagerBuildInstanceTestCase(test.NoDBTestCase):
                 block_device_info=self.block_device_info))
 
             instance_update.assert_has_calls(mock.call(self.context,
-                self.instance['uuid'], mock.ANY, 'conductor'))
+                self.instance['uuid'], mock.ANY, 'conductor', message=None))
 
     @mock.patch('nova.compute.manager.ComputeManager._get_power_state')
     def test_spawn_waits_for_network_and_saves_info_cache(self, gps):
@@ -1548,7 +1550,8 @@ class ComputeManagerBuildInstanceTestCase(test.NoDBTestCase):
         self.mox.StubOutWithMock(conductor_rpcapi.ConductorAPI,
                                  'instance_update')
         conductor_rpcapi.ConductorAPI.instance_update(
-            self.context, self.instance['uuid'], mox.IgnoreArg(), 'conductor')
+            self.context, self.instance['uuid'], mox.IgnoreArg(), 'conductor',
+            message=None)
         self._notify_about_instance_usage('create.start',
             extra_usage_info={'image_name': self.image.get('name')})
         self.compute._build_resources(self.context, self.instance,

@@ -108,17 +108,26 @@ class _BaseTestCase(object):
         inst.update(params)
         return db.instance_create(self.context, inst)
 
-    def _do_update(self, instance_uuid, **updates):
+    def _do_update(self, instance_uuid, message=None, **updates):
         return self.conductor.instance_update(self.context, instance_uuid,
-                                              updates)
+                                              updates, message=message)
 
-    def test_instance_update(self):
+    @mock.patch('nova.notifications.send_update')
+    def test_instance_update(self, mock_send_update):
         instance = self._create_fake_instance()
         new_inst = self._do_update(instance['uuid'],
+                                   message='hi mom',
                                    vm_state=vm_states.STOPPED)
         instance = db.instance_get_by_uuid(self.context, instance['uuid'])
         self.assertEqual(instance['vm_state'], vm_states.STOPPED)
         self.assertEqual(new_inst['vm_state'], instance['vm_state'])
+
+        calls = mock_send_update.mock_calls
+        self.assertEqual(1, len(calls))
+        call = calls[0]
+        # last arg is the message kwarg
+        message_kwarg = call[-1]['message']
+        self.assertEqual('hi mom', message_kwarg)
 
     def test_action_event_start(self):
         self.mox.StubOutWithMock(db, 'action_event_start')

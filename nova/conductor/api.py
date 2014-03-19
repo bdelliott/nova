@@ -61,10 +61,11 @@ class LocalAPI(object):
         # nothing to wait for in the local case.
         pass
 
-    def instance_update(self, context, instance_uuid, **updates):
+    def instance_update(self, context, instance_uuid, message=None, **updates):
         """Perform an instance update in the database."""
         return self._manager.instance_update(context, instance_uuid,
-                                             updates, 'compute')
+                                             updates, 'compute',
+                                             message=message)
 
     def instance_get_by_uuid(self, context, instance_uuid,
                              columns_to_join=None):
@@ -358,10 +359,11 @@ class API(LocalAPI):
                                 'Is it running? Or did this service start '
                                 'before nova-conductor?'))
 
-    def instance_update(self, context, instance_uuid, **updates):
+    def instance_update(self, context, instance_uuid, message=None, **updates):
         """Perform an instance update in the database."""
         return self._manager.instance_update(context, instance_uuid,
-                                             updates, 'conductor')
+                                             updates, 'conductor',
+                                             message=message)
 
 
 class ComputeTaskAPI(object):

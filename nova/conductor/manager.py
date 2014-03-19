@@ -76,7 +76,7 @@ class ConductorManager(manager.Manager):
     namespace.  See the ComputeTaskManager class for details.
     """
 
-    target = messaging.Target(version='1.64')
+    target = messaging.Target(version='2.01')
 
     def __init__(self, *args, **kwargs):
         super(ConductorManager, self).__init__(service_name='conductor',
@@ -116,7 +116,7 @@ class ConductorManager(manager.Manager):
                                    exception.InstanceNotFound,
                                    exception.UnexpectedTaskStateError)
     def instance_update(self, context, instance_uuid,
-                        updates, service=None):
+                        updates, service=None, message=None):
         for key, value in updates.iteritems():
             if key not in allowed_updates:
                 LOG.error(_("Instance update attempted for "
@@ -128,7 +128,8 @@ class ConductorManager(manager.Manager):
 
         old_ref, instance_ref = self.db.instance_update_and_get_original(
             context, instance_uuid, updates)
-        notifications.send_update(context, old_ref, instance_ref, service)
+        notifications.send_update(context, old_ref, instance_ref, service,
+                                  message=message)
         return jsonutils.to_primitive(instance_ref)
 
     # NOTE(russellb): This method is now deprecated and can be removed in

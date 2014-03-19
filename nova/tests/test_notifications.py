@@ -320,3 +320,24 @@ class NotificationsTestCase(test.TestCase):
 
         notifications.send_update(self.context, self.instance, self.instance)
         self.assertEqual(0, len(fake_notifier.NOTIFICATIONS))
+
+    def test_message(self):
+        # test optional human readable message sent in updates
+        self.flags(notify_on_state_change="vm_and_task_state")
+
+        notifications.send_update(self.context, self.instance, self.instance,
+                                  message='hi mom')
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+
+        payload = fake_notifier.NOTIFICATIONS[0].payload
+        self.assertEqual('hi mom', payload['message'])
+
+    def test_message_default(self):
+        # if not specified, message should be empty string
+        self.flags(notify_on_state_change="vm_and_task_state")
+
+        notifications.send_update(self.context, self.instance, self.instance)
+        self.assertEqual(1, len(fake_notifier.NOTIFICATIONS))
+
+        payload = fake_notifier.NOTIFICATIONS[0].payload
+        self.assertEqual('', payload['message'])
