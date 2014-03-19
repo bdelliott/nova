@@ -44,7 +44,7 @@ class VirtAPIBaseTest(test.NoDBTestCase, test.APICoverage):
 
     def test_instance_update(self):
         self.assertExpected('instance_update', 'fake-uuid',
-                            dict(host='foohost'))
+                            dict(host='foohost'), message='hello')
 
     def test_provider_fw_rule_get_all(self):
         self.assertExpected('provider_fw_rule_get_all')
@@ -77,6 +77,8 @@ class FakeVirtAPITest(VirtAPIBaseTest):
             # NOTE(danms): instance_update actually becomes the other variant
             # in FakeVirtAPI
             db_method = 'instance_update_and_get_original'
+            # drop the message kwarg - it's only for the notification
+            kwargs.pop('message')
         else:
             db_method = method
         self.mox.StubOutWithMock(db, db_method)
@@ -107,10 +109,10 @@ class FakeCompute(object):
         self.instance_events.prepare_for_instance_event.side_effect = \
             self._prepare_for_instance_event
 
-    def _instance_update(self, context, instance_uuid, **kwargs):
+    def _instance_update(self, context, instance_uuid, message=None, **kwargs):
         # NOTE(danms): Fake this behavior from compute/manager::ComputeManager
-        return self.conductor_api.instance_update(context,
-                                                  instance_uuid, kwargs)
+        return self.conductor_api.instance_update(context, instance_uuid,
+                                                  kwargs, message=message)
 
     def _event_waiter(self):
         event = mock.MagicMock()

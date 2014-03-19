@@ -1117,6 +1117,18 @@ class ComputeManagerUnitTestCase(test.NoDBTestCase):
             self.assertFalse(allow_reboot)
             self.assertEqual(reboot_type, 'HARD')
 
+    def test_instance_update_with_message(self):
+        instance = {'uuid': 'fake', 'host': 'host'}
+        message = 'hello'
+
+        mock_update = mock.Mock(return_value=instance)
+        self.compute.conductor_api.instance_update = mock_update
+
+        self.compute._instance_update(self.context, instance['uuid'],
+                                      message=message, task_state='foo')
+        mock_update.assert_called_once_with(self.context, instance['uuid'],
+                                            message=message, task_state='foo')
+
 
 class ComputeManagerBuildInstanceTestCase(test.NoDBTestCase):
     def setUp(self):

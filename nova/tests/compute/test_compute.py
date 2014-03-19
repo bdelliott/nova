@@ -6042,7 +6042,8 @@ class ComputeTestCase(BaseTestCase):
             for inst in old_instances:
                 conductor_instance_update.assert_has_calls([
                     mock.call(ctxt, inst['uuid'],
-                              vm_state=vm_states.ERROR)])
+                              vm_state=vm_states.ERROR,
+                              message=None)])
                 node_is_available.assert_has_calls([
                     mock.call(fake_instance_ref['node'])])
 

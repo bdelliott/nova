@@ -468,7 +468,7 @@ class FakeDriver(driver.ComputeDriver):
 
 
 class FakeVirtAPI(virtapi.VirtAPI):
-    def instance_update(self, context, instance_uuid, updates):
+    def instance_update(self, context, instance_uuid, updates, message=None):
         return db.instance_update_and_get_original(context,
                                                    instance_uuid,
                                                    updates)

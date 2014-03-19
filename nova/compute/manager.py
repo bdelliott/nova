@@ -491,9 +491,10 @@ class ComputeVirtAPI(virtapi.VirtAPI):
         super(ComputeVirtAPI, self).__init__()
         self._compute = compute
 
-    def instance_update(self, context, instance_uuid, updates):
+    def instance_update(self, context, instance_uuid, updates, message=None):
         return self._compute._instance_update(context,
                                               instance_uuid,
+                                              message=message,
                                               **updates)
 
     def provider_fw_rule_get_all(self, context):
@@ -613,11 +614,12 @@ class ComputeManager(manager.Manager):
             self._resource_tracker_dict[nodename] = rt
         return rt
 
-    def _instance_update(self, context, instance_uuid, **kwargs):
+    def _instance_update(self, context, instance_uuid, message=None, **kwargs):
         """Update an instance in the database using kwargs as value."""
 
         instance_ref = self.conductor_api.instance_update(context,
                                                           instance_uuid,
+                                                          message=message,
                                                           **kwargs)
         if (instance_ref['host'] == self.host and
                 self.driver.node_is_available(instance_ref['node'])):
