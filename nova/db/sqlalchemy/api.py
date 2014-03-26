@@ -75,6 +75,12 @@ connection_opts = [
                secret=True,
                help='The SQLAlchemy connection string used to connect to the '
                     'slave database'),
+    cfg.BoolOpt('force_yield',
+                default=True,
+                help='Force a greenthread yield after a DB connection is '
+                     'returned to the pool.  Under load this may cause '
+                     'excessive swapping between greenthreads. (ping-ponging '
+                     'rather than finishing requests.)')
 ]
 
 CONF = cfg.CONF
