@@ -14,6 +14,8 @@
 #    under the License.
 #
 
+import re
+
 from oslo.config import cfg
 
 import netaddr
@@ -28,11 +30,42 @@ from nova.openstack.common.gettextutils import _
 from nova.openstack.common import jsonutils
 from nova.openstack.common import log as logging
 
-LOG = logging.getLogger(__name__)
+neutron_opts = [
+    cfg.ListOpt('network_order',
+                default=['public', 'private', '.*'],
+                help='Ordered list of network labels, using regex syntax'),
+    ]
+
 CONF = cfg.CONF
 
 
+try:
+    CONF.register_opts(neutron_opts)
+except cfg.DuplicateOptError:
+    # NOTE(jkoelker) These options are verbatim in the old quantum2 manager
+    #                this is here to make sure they are registered for our
+    #                use until we remove it totally
+    pass
+
+
+LOG = logging.getLogger(__name__)
+
+
 update_instance_info_cache = base_api.update_instance_cache_with_nw_info
+
+
+def _order_nw_info_by_label(nw_info):
+    if nw_info is None:
+        return nw_info
+
+    def get_vif_label_key(vif):
+        for i, pattern in enumerate(CONF.network_order):
+            if re.match(pattern, vif['network']['label']):
+                return i
+        else:
+            return len(CONF.network_order)
+    nw_info.sort(key=get_vif_label_key)
+    return nw_info
 
 
 class API(api.API):
@@ -204,6 +237,10 @@ class API(api.API):
             if e.status_code == 409:
                 raise exception.PortLimitExceeded()
             raise
+
+    def _get_instance_nw_info(self, *args, **kwargs):
+        nw_info = super(API, self)._get_instance_nw_info(*args, **kwargs)
+        return _order_nw_info_by_label(nw_info)
 
     def get(self, context, network_uuid):
         """Get specific network for client."""
