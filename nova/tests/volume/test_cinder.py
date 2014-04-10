@@ -16,6 +16,7 @@
 import mock
 
 from cinderclient import exceptions as cinder_exception
+from cinderclient.v1 import client as cinder_client
 import mock
 
 from nova import context
@@ -41,6 +42,54 @@ class FakeCinderClient(object):
     def __init__(self):
         self.volumes = self.Volumes()
         self.volume_snapshots = self.volumes
+
+
+class CinderClientTestCase(test.NoDBTestCase):
+    def setUp(self):
+        super(CinderClientTestCase, self).setUp()
+        service_catalog = [{
+            'endpoints':
+                [{'publicURL': 'http://catalog/fake_project_id',
+                  'region': 'DEV'}],
+            'name': 'cinder',
+            'type': 'volume'}]
+        self.context = context.RequestContext('fake_user', 'fake_project_id',
+                service_catalog=service_catalog)
+
+    @mock.patch.object(cinder_client, 'Client')
+    def test_cinderclient_endpoint_template(self, mock_client):
+        self.flags(cinder_endpoint_template='http://template/%(project_id)s')
+        cinder.cinderclient(self.context)
+        url = 'http://template/fake_project_id'
+        mock_client.assert_called_once_with(self.context.user_id,
+                self.context.auth_token, project_id=self.context.project_id,
+                auth_url=url, insecure=False, retries=3, cacert=None)
+
+    @mock.patch.object(cinder_client, 'Client')
+    def test_cinderclient_service_catalog(self, mock_client):
+        cinder.cinderclient(self.context)
+        url = 'http://catalog/fake_project_id'
+        mock_client.assert_called_once_with(self.context.user_id,
+                self.context.auth_token, project_id=self.context.project_id,
+                auth_url=url, insecure=False, retries=3, cacert=None)
+
+    @mock.patch.object(cinder_client, 'Client')
+    def test_cinderclient_racker_admin_overrides_template(self,
+            mock_client):
+        self.flags(cinder_endpoint_template='http://template/%(project_id)s')
+        service_catalog = [{
+            'endpoints':
+                [{'publicURL': 'http://racker_admin_catalog/fake_project_id',
+                  'region': 'DEV'}],
+            'name': 'cloudBlockStorageRackerAdmin',
+            'type': 'volume'}]
+        ctxt = context.RequestContext('fake_user', 'fake_project_id',
+                service_catalog=service_catalog)
+        cinder.cinderclient(ctxt)
+        url = 'http://racker_admin_catalog/fake_project_id'
+        mock_client.assert_called_once_with(self.context.user_id,
+                self.context.auth_token, project_id=self.context.project_id,
+                auth_url=url, insecure=False, retries=3, cacert=None)
 
 
 class CinderApiTestCase(test.NoDBTestCase):

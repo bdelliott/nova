@@ -91,6 +91,17 @@ def cinderclient(context):
                          service_name=service_name,
                          endpoint_type=endpoint_type)
 
+    # NOTE(alaski): Rax patch so that requests from the racker admin API use
+    # the correct cinder endpoint.
+    try:
+        racker_admin_url = sc.url_for(attr='region',
+                filter_value=CONF.os_region_name, service_type='volume',
+                volume_service_name='cloudBlockStorageRackerAdmin',
+                endpoint_type='publicURL')
+        url = racker_admin_url
+    except cinder_exception.EndpointNotFound:
+        pass
+
     LOG.debug('Cinderclient connection created using URL: %s', url)
 
     c = cinder_client.Client(context.user_id,
