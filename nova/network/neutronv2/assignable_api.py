@@ -412,19 +412,20 @@ class API(api.API):
             fixed_ips = p['fixed_ips']
             for subnet in ipam_subnets:
                 if subnet["ip_version"] == 4:
-                    fixed_ips.append({'subnet_id': subnet['id']})
-
-            port_req_body = {'port': {'fixed_ips': fixed_ips}}
-            try:
-                neutronv2.get_client(context).update_port(p['id'],
-                                                          port_req_body)
-                return
-            except Exception as ex:
-                msg = _("Unable to update port %(portid)s on subnet "
-                        "%(subnet_id)s with failure: %(exception)s")
-                LOG.debug(msg, {'portid': p['id'],
-                                'subnet_id': subnet['id'],
-                                'exception': ex})
+                    fips = []
+                    fips.extend(fixed_ips)
+                    fips.append({'subnet_id': subnet['id']})
+                    port_req_body = {'port': {'fixed_ips': fips}}
+                    try:
+                        neutronv2.get_client(context).update_port(
+                            p['id'], port_req_body)
+                        return
+                    except Exception as ex:
+                        LOG.debug("Unable to update port %(portid)s on subnet "
+                                  "%(subnet_id)s with failure: %(exception)s",
+                                  {'portid': p['id'],
+                                   'subnet_id': subnet['id'],
+                                   'exception': ex})
 
         raise exception.NetworkNotFoundForInstance(
             instance_id=instance['uuid'])
