@@ -2995,6 +2995,15 @@ class LibvirtDriver(driver.ComputeDriver):
             fs.source_dir = os.path.join(
                 libvirt_utils.get_instance_path(instance), 'rootfs')
             devices.append(fs)
+
+            if configdrive.required_by(instance):
+                cfg_drive = vconfig.LibvirtConfigGuestFilesys()
+                cfg_drive.source_type = "mount"
+                cfg_drive.source_dir = os.path.join(
+                    libvirt_utils.get_instance_path(instance), 'disk.config')
+                cfg_drive.target_dir = '/var/lib/cloud/seed/config_drive'
+                cfg_drive.readonly = True
+                devices.append(cfg_drive)
         else:
 
             if rescue:

@@ -96,6 +96,10 @@ class ConfigDriveBuilder(object):
             LOG.debug(_('Added %(filepath)s to config drive'),
                       {'filepath': path})
 
+    def _make_fs(self, path):
+        shutil.copytree(self.tempdir, path)
+        os.chmod(path, 0o755)
+
     def _make_iso9660(self, path):
         publisher = "%(product)s %(version)s" % {
             'product': version.product_string(),
@@ -162,6 +166,8 @@ class ConfigDriveBuilder(object):
             self._make_iso9660(path)
         elif CONF.config_drive_format == 'vfat':
             self._make_vfat(path)
+        elif CONF.config_drive_format == 'fs':
+            self._make_fs(path)
         else:
             raise exception.ConfigDriveUnknownFormat(
                 format=CONF.config_drive_format)

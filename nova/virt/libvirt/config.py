@@ -754,6 +754,7 @@ class LibvirtConfigGuestFilesys(LibvirtConfigGuestDevice):
         self.source_type = "mount"
         self.source_dir = None
         self.target_dir = "/"
+        self.readonly = False
 
     def format_dom(self):
         dev = super(LibvirtConfigGuestFilesys, self).format_dom()
@@ -762,6 +763,9 @@ class LibvirtConfigGuestFilesys(LibvirtConfigGuestDevice):
 
         dev.append(etree.Element("source", dir=self.source_dir))
         dev.append(etree.Element("target", dir=self.target_dir))
+
+        if self.readonly:
+            dev.append(etree.Element("readonly"))
 
         return dev
 
