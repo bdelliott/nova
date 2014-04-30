@@ -4435,3 +4435,42 @@ class ServerGroupsSampleJsonTest(ServersSampleBase):
 
 class ServerGroupsSampleXmlTest(ServerGroupsSampleJsonTest):
     ctype = 'xml'
+
+
+class PublicIPZoneIDSampleJsonTest(ServersSampleBase):
+    extension_name = ("nova.api.openstack.compute.contrib"
+                      ".public_ip_zone_id.Public_ip_zone_id")
+
+    def _post_server(self):
+        uuid = super(PublicIPZoneIDSampleJsonTest, self)._post_server()
+        self.compute.db.instance_update(context.get_admin_context(),
+                                        uuid, {'cell_name': 'cell1'})
+        return uuid
+
+    def test_servers_get(self):
+        uuid = self._post_server()
+        response = self._do_get('servers/%s' % uuid)
+        subs = self._get_regexes()
+        subs['id'] = uuid
+        subs['hostid'] = '[a-f0-9]+'
+        self._verify_response('server-get-resp', subs, response, 200)
+
+    def test_servers_list(self):
+        uuid = self._post_server()
+        response = self._do_get('servers')
+        subs = self._get_regexes()
+        subs['id'] = uuid
+        subs['hostid'] = '[a-f0-9]+'
+        self._verify_response('servers-list-resp', subs, response, 200)
+
+    def test_servers_details(self):
+        uuid = self._post_server()
+        response = self._do_get('servers/detail')
+        subs = self._get_regexes()
+        subs['id'] = uuid
+        subs['hostid'] = '[a-f0-9]+'
+        self._verify_response('servers-details-resp', subs, response, 200)
+
+
+class PublicIPZoneIDSampleXmlTest(PublicIPZoneIDSampleJsonTest):
+    ctype = 'xml'

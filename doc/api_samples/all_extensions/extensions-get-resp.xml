@@ -291,4 +291,7 @@
   <extension alias="OS-FLV-WITH-EXT-SPECS" updated="2013-08-01T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/flavor_with_extra_specs/api/v2.0" name="FlavorWithExtraSpecs">
     <description>Provide extra specs along with flavor data.</description>
   </extension>
+  <extension alias="RAX-PUBLIC-IP-ZONE-ID" updated="2013-04-29T00:00:00Z" namespace="http://docs.openstack.org/compute/ext/public_ip_zone_id/api/v1.1" name="PublicIPZoneID">
+    <description>Adds public_ip_zone_id on Servers.</description>
+  </extension>
 </extensions>

@@ -727,6 +727,13 @@
             "name": "FlavorWithExtraSpecs",
             "namespace": "http://docs.openstack.org/compute/ext/flavor_with_extra_specs/api/v2.0",
             "updated": "2013-08-01T00:00:00Z"
+        }, {
+            "alias": "RAX-PUBLIC-IP-ZONE-ID",
+            "description": "Adds public_ip_zone_id on Servers.",
+            "links": [],
+            "name": "PublicIPZoneID",
+            "namespace": "http://docs.openstack.org/compute/ext/public_ip_zone_id/api/v1.1",
+            "updated": "2013-04-29T00:00:00Z"
         }
     ]
 }

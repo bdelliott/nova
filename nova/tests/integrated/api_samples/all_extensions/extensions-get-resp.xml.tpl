@@ -272,4 +272,7 @@
   <extension alias="os-server-groups" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/servergroups/api/v2" name="ServerGroups">
     <description>%(text)s</description>
   </extension>
+  <extension alias="RAX-PUBLIC-IP-ZONE-ID" updated="%(isotime)s" namespace="http://docs.openstack.org/compute/ext/public_ip_zone_id/api/v1.1" name="PublicIPZoneID">
+    <description>%(text)s</description>
+  </extension>
 </extensions>

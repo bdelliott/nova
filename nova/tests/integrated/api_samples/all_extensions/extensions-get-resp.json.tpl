@@ -727,6 +727,14 @@
             "name": "ServerGroups",
             "namespace": "http://docs.openstack.org/compute/ext/servergroups/api/v2",
             "updated": "%(isotime)s"
+        },
+        {
+            "alias": "RAX-PUBLIC-IP-ZONE-ID",
+            "description": "%(text)s",
+            "links": [],
+            "name": "PublicIPZoneID",
+            "namespace": "http://docs.openstack.org/compute/ext/public_ip_zone_id/api/v1.1",
+            "updated": "%(isotime)s"
         }
     ]
 }
