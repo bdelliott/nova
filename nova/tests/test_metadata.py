@@ -296,7 +296,8 @@ class MetadataTestCase(test.TestCase):
         network_info = []
 
         self.mox.StubOutWithMock(netutils, "get_injected_network_template")
-        netutils.get_injected_network_template(network_info).AndReturn(False)
+        netutils.get_injected_network_template(network_info,
+            inject_network=None).AndReturn(False)
         self.mox.ReplayAll()
 
         base.InstanceMetadata(fake_inst_obj(self.context),
@@ -314,7 +315,7 @@ class MetadataTestCase(test.TestCase):
         self.mox.StubOutWithMock(netutils, "get_injected_network_template")
 
         netutils.get_injected_network_template(
-            network_info_from_api).AndReturn(False)
+            network_info_from_api, inject_network=None).AndReturn(False)
 
         self.mox.ReplayAll()
 

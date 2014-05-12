@@ -168,7 +168,7 @@ class GenerateConfigDriveTestCase(VMUtilsTestBase):
 
         class FakeInstanceMetadata(object):
             def __init__(_self, instance, content=None, extra_md=None,
-                         network_info=None):
+                         network_info=None, inject_network=None):
                 self.assertEqual(network_info, "nw_info")
 
             def metadata_for_config_drive(_self):

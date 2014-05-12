@@ -59,7 +59,8 @@ def _get_first_network(network, version):
 
 
 def get_injected_network_template(network_info, use_ipv6=CONF.use_ipv6,
-                                    template=CONF.injected_network_template):
+                                  template=CONF.injected_network_template,
+                                  inject_network=None):
     """Returns a rendered network template for the given network_info.
 
     :param network_info:
@@ -67,6 +68,7 @@ def get_injected_network_template(network_info, use_ipv6=CONF.use_ipv6,
     :param use_ipv6: If False, do not return IPv6 template information
         even if an IPv6 subnet is present in network_info.
     :param template: Path to the interfaces template file.
+    :param inject_network: Inject network for Cloud Init
     """
     if not (network_info and template):
         return
@@ -88,7 +90,8 @@ def get_injected_network_template(network_info, use_ipv6=CONF.use_ipv6,
 
         ifc_num += 1
 
-        if not network.get_meta('injected'):
+        inject = inject_network or network.get_meta('injected')
+        if not inject:
             continue
 
         address = None

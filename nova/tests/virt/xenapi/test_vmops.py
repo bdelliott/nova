@@ -16,6 +16,7 @@
 from eventlet import greenthread
 import mock
 
+from nova.compute import flavors
 from nova.compute import power_state
 from nova.compute import task_states
 from nova import exception
@@ -394,6 +395,48 @@ class SpawnTestCase(VMOpsTestBase):
     def test_spawn_performs_rollback_and_throws_exception(self):
         self.assertRaises(test.TestingException, self._test_spawn,
                           throw_exception=test.TestingException())
+
+    @mock.patch.object(vm_utils, "generate_configdrive")
+    @mock.patch.object(xenapi_agent, "should_use_agent")
+    @mock.patch.object(flavors, "extract_flavor")
+    @mock.patch.object(vm_utils, "create_vbd")
+    def test_network_not_injected_from_config_drive_when_agent_is_enabled(self,
+            mock_create_vbd, mock_extract_flavor, mock_use_agent,
+            mock_generate_config_drive):
+        instance = {"config_drive": True, 'auto_disk_config': False}
+        vm_ref = "vm_ref"
+        vdis = {'root': {'ref': '233'}}
+        network_info = "network_info"
+
+        mock_extract_flavor.return_value = {'swap': None, 'ephemeral_gb': None}
+        mock_use_agent.return_value = True
+
+        self.vmops._attach_disks(instance, vm_ref, "name", vdis,
+                                 "disk_image_type", network_info)
+        mock_generate_config_drive.assert_called_with(mock.ANY, instance,
+            vm_ref, '3', network_info, admin_password=None, files=None,
+            inject_network=False)
+
+    @mock.patch.object(vm_utils, "generate_configdrive")
+    @mock.patch.object(xenapi_agent, "should_use_agent")
+    @mock.patch.object(flavors, "extract_flavor")
+    @mock.patch.object(vm_utils, "create_vbd")
+    def test_inject_network_from_config_drive_when_agent_is_disabled(self,
+            mock_create_vbd, mock_extract_flavor, mock_use_agent,
+            mock_generate_config_drive):
+        instance = {"config_drive": True, 'auto_disk_config': False}
+        vm_ref = "vm_ref"
+        vdis = {'root': {'ref': '233'}}
+        network_info = "network_info"
+
+        mock_extract_flavor.return_value = {'swap': None, 'ephemeral_gb': None}
+        mock_use_agent.return_value = False
+
+        self.vmops._attach_disks(instance, vm_ref, "name", vdis,
+                                 "disk_image_type", network_info)
+        mock_generate_config_drive.assert_called_with(mock.ANY, instance,
+            vm_ref, '3', network_info, admin_password=None, files=None,
+            inject_network=True)
 
     def _test_finish_migration(self, power_on=True, resize_instance=True,
                                throw_exception=None):

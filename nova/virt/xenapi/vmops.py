@@ -711,11 +711,13 @@ class VMOps(object):
 
         # Attach (optional) configdrive v2 disk
         if configdrive.required_by(instance):
+            inject_network = not xapi_agent.should_use_agent(instance)
             vm_utils.generate_configdrive(self._session, instance, vm_ref,
                                           DEVICE_CONFIGDRIVE,
                                           network_info,
                                           admin_password=admin_password,
-                                          files=files)
+                                          files=files,
+                                          inject_network=inject_network)
 
     def _wait_for_instance_to_start(self, instance, vm_ref):
         LOG.debug(_('Waiting for instance state to become running'),
