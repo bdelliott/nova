@@ -29,11 +29,18 @@ from nova.network.neutronv2 import api
 from nova.openstack.common.gettextutils import _
 from nova.openstack.common import jsonutils
 from nova.openstack.common import log as logging
+from nova.openstack.common import memorycache as memcache
 
 neutron_opts = [
     cfg.ListOpt('network_order',
                 default=['public', 'private', '.*'],
                 help='Ordered list of network labels, using regex syntax'),
+    cfg.IntOpt('public_network_cache_ttl',
+               default=300,
+               help='Memorycache TTL for public_nets'),
+    cfg.BoolOpt('enable_memorycache',
+                default=False,
+                help='Feature toggle memorycache for public_nets'),
     ]
 
 CONF = cfg.CONF
@@ -68,6 +75,27 @@ def _order_nw_info_by_label(nw_info):
     return nw_info
 
 
+class Cacher(object):
+    _instance = None
+
+    def __new__(cls, *args, **kwargs):
+        if not cls._instance:
+            cls._instance = object.__new__(cls, *args, **kwargs)
+        return cls._instance
+
+    def __init__(self):
+        self._cache = memcache.get_client()
+
+    def set(self, name, value, ttl):
+        return self._cache.set(name, value, ttl)
+
+    def get(self, name):
+        return self._cache.get(name)
+
+
+_cacher = Cacher()
+
+
 class API(api.API):
     """API for interacting with the neutron 2.x API."""
 
@@ -77,6 +105,14 @@ class API(api.API):
         The list contains networks owned by the tenant and public networks.
         If net_ids specified, it searches networks with requested IDs only.
         """
+        if CONF.enable_memorycache:
+
+            pub = '00000000-0000-0000-0000-000000000000'
+            public_nets_cache = _cacher.get('public_nets')
+
+            if net_ids == [pub] and public_nets_cache:
+                return public_nets_cache
+
         if not neutron:
             neutron = neutronv2.get_client(context)
 
@@ -103,6 +139,10 @@ class API(api.API):
             lambda x: x['id'],
             nets,
             net_ids)
+
+        if CONF.enable_memorycache:
+            if net_ids == [pub]:
+                _cacher.set('public_nets', nets, CONF.public_network_cache_ttl)
 
         return nets
 
