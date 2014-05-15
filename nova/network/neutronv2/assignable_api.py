@@ -41,6 +41,12 @@ neutron_opts = [
     cfg.BoolOpt('enable_memorycache',
                 default=False,
                 help='Feature toggle memorycache for public_nets'),
+    cfg.BoolOpt('enable_neutron_optimization',
+                default=False,
+                help='Enable the get_all neutron optimization'),
+    cfg.BoolOpt("port_subnet_optimization",
+                default=False,
+                help="Retrieve subnets with ports instead of after the fact")
     ]
 
 CONF = cfg.CONF
@@ -150,6 +156,9 @@ class API(api.API):
                                   port_ids=None, **kwargs):
         search_opts = {'tenant_id': instance['project_id'],
                        'device_id': instance['uuid'], }
+        if cfg.CONF.port_subnet_optimization:
+            search_opts["fields"] = ["port_subnets"]
+
         client = neutronv2.get_client(context, admin=True)
         data = client.list_ports(**search_opts)
         ports = data.get('ports', [])
@@ -306,28 +315,55 @@ class API(api.API):
 
     def get_all(self, context, shared=False):
         """Get all networks for client."""
-        client = neutronv2.get_client(context)
-        kwargs = {}
-        if shared:
-            kwargs["shared"] = shared
+        if CONF.enable_neutron_optimization:
+            client = neutronv2.get_client(context)
+            kwargs = {}
+            if shared:
+                kwargs["shared"] = shared
+            else:
+                kwargs["tenant_id"] = context.project_id
+
+            networks = client.list_networks(**kwargs).get('networks')
+            ids = []
+            for network in networks:
+                network['label'] = network['name']
+                ids.append(network["id"])
+            subnets = client.list_subnets(
+                network_id=ids, tenant_id=context.project_id,
+                fields="all_subnets").get("subnets")
+            sub_ids = {}
+
+            for sub in subnets:
+                sub_ids[sub["id"]] = sub
+            for network in networks:
+                if network["subnets"]:
+                    for subnet_id in network["subnets"]:
+                        if subnet_id in sub_ids:
+                            network["cidr"] = sub_ids[subnet_id]["cidr"]
+            return networks
         else:
-            kwargs["tenant_id"] = context.project_id
+            client = neutronv2.get_client(context)
+            kwargs = {}
+            if shared:
+                kwargs["shared"] = shared
+            else:
+                kwargs["tenant_id"] = context.project_id
 
-        networks = client.list_networks(**kwargs).get('networks')
-        ids = []
-        for network in networks:
-            network['label'] = network['name']
-            ids.append(network["id"])
-        subnets = client.list_subnets(
-            network_id=ids, tenant_id=context.project_id).get("subnets")
-        net_ids = {}
+            networks = client.list_networks(**kwargs).get('networks')
+            ids = []
+            for network in networks:
+                network['label'] = network['name']
+                ids.append(network["id"])
+            subnets = client.list_subnets(
+                network_id=ids, tenant_id=context.project_id).get("subnets")
+            net_ids = {}
 
-        for sub in subnets:
-            net_ids[sub["network_id"]] = sub
-        for network in networks:
-            if network and network["id"] in net_ids:
-                network["cidr"] = net_ids[network["id"]]["cidr"]
-        return networks
+            for sub in subnets:
+                net_ids[sub["network_id"]] = sub
+            for network in networks:
+                if network and network["id"] in net_ids:
+                    network["cidr"] = net_ids[network["id"]]["cidr"]
+            return networks
 
     def create(self, context, **kwargs):
         neutron = neutronv2.get_client(context)
@@ -508,10 +544,7 @@ class API(api.API):
         return []
 
     def _get_subnets_from_port(self, context, port):
-        """Return the subnets for a given port.
-
-        Forked because we need the subnet routes at the end.
-        """
+        """Return the subnets for a given port."""
 
         fixed_ips = port['fixed_ips']
         # No fixed_ips for the port means there is no subnet associated
@@ -521,9 +554,14 @@ class API(api.API):
         # related to the port. To avoid this, the method returns here.
         if not fixed_ips:
             return []
-        search_opts = {'id': [ip['subnet_id'] for ip in fixed_ips]}
-        data = neutronv2.get_client(context).list_subnets(**search_opts)
-        ipam_subnets = data.get('subnets', [])
+
+        if cfg.CONF.port_subnet_optimization:
+            ipam_subnets = [fip["subnet"] for fip in port["fixed_ips"]]
+        else:
+            search_opts = {'id': [ip['subnet_id'] for ip in fixed_ips]}
+            data = neutronv2.get_client(context).list_subnets(**search_opts)
+            ipam_subnets = data.get('subnets', [])
+
         subnets = []
 
         for subnet in ipam_subnets:
@@ -538,10 +576,6 @@ class API(api.API):
                 subnet_object.add_dns(
                     network_model.IP(address=dns, type='dns'))
 
-            # NOTE(tr3buchet): the following paragraph is our fork change
-            # TODO(tr3buchet): remove this function once they add route code
-            #                  upstream
-            # NOTE(from koelker): this get business is all jank like for tests
             if subnet.get('ip_version', 6) == 4:
                 for route in subnet.get('host_routes', []):
                     next_hop = network_model.IP(address=route['nexthop'],
