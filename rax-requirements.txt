@@ -1,2 +1,3 @@
 -r requirements.txt
 qonos # NOTE(ameade) This is for the scheduled images extension temporarily here
+IDMapShift==0.0.2
