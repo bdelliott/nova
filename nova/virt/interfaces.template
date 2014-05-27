@@ -6,8 +6,8 @@
 # The loopback network interface
 auto lo
 iface lo inet loopback
+{%- for ifc in interfaces %}
 
-{% for ifc in interfaces -%}
 auto {{ ifc.name }}
 iface {{ ifc.name }} inet static
         address {{ ifc.address }}
@@ -28,5 +28,4 @@ iface {{ ifc.name }} inet6 static
     gateway {{ ifc.gateway_v6 }}
 {%- endif %}
 {%- endif %}
-
 {%- endfor %}
