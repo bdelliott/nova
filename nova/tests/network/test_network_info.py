@@ -558,11 +558,10 @@ class NetworkInfoTests(test.NoDBTestCase):
                     self.assertNotIn('gateway', template)
                 self.assertIn('dns-nameservers 1.2.3.4 2.3.4.5', template)
             if use_ipv6:
-                self.assertIn('iface eth0 inet6 static', template)
-                self.assertIn('address 1234:567::2', template)
-                self.assertIn('netmask 48', template)
+                self.assertIn('addr add 1234:567::2/48', template)
                 if gateway:
-                    self.assertIn('gateway 1234:567::1', template)
+                    self.assertIn('route add default via 1234:567::1',
+                                  template)
             if not use_ipv4 and not use_ipv6:
                 self.assertIsNone(template)
 

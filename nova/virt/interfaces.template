@@ -19,13 +19,12 @@ iface {{ ifc.name }} inet static
 {%- if ifc.dns %}
         dns-nameservers {{ ifc.dns }}
 {%- endif %}
-
-{% if use_ipv6 -%}
-iface {{ ifc.name }} inet6 static
-    address {{ ifc.address_v6 }}
-    netmask {{ ifc.netmask_v6 }}
+{%- if use_ipv6 %}
+{%- if ifc.address_v6 %}
+        post-up ip -6 addr add {{ ifc.address_v6 }}/{{ifc.netmask_v6 }} dev ${IFACE}
 {%- if ifc.gateway_v6 %}
-    gateway {{ ifc.gateway_v6 }}
+        post-up ip -6 route add default via {{ ifc.gateway_v6 }} dev ${IFACE}
+{%- endif %}
 {%- endif %}
 {%- endif %}
 {%- endfor %}

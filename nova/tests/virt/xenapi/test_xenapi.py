@@ -879,14 +879,13 @@ class XenAPIVMTestCase(stubs.XenAPITestBase):
             config = [line.strip() for line in input.split("\n")]
             # Find the start of eth0 configuration and check it
             index = config.index('auto eth0')
-            self.assertEqual(config[index + 1:index + 8], [
+            self.assertEqual(config[index + 1:index + 7], [
                 'iface eth0 inet static',
                 'address 192.168.1.100',
                 'netmask 255.255.255.0',
                 'broadcast 192.168.1.255',
                 'gateway 192.168.1.1',
-                'dns-nameservers 192.168.1.3 192.168.1.4',
-                ''])
+                'dns-nameservers 192.168.1.3 192.168.1.4'])
             self._tee_executed = True
             return '', ''
 
