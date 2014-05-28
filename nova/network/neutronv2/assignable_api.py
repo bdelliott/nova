@@ -35,18 +35,26 @@ neutron_opts = [
     cfg.ListOpt('network_order',
                 default=['public', 'private', '.*'],
                 help='Ordered list of network labels, using regex syntax'),
-    cfg.IntOpt('public_network_cache_ttl',
+    cfg.IntOpt('nets_memcache_ttl',
                default=300,
                help='Memorycache TTL for public_nets'),
     cfg.BoolOpt('enable_memorycache',
                 default=False,
-                help='Feature toggle memorycache for public_nets'),
+                help='Feature toggle memorycache for _get_available_networks'),
     cfg.BoolOpt('enable_neutron_optimization',
                 default=False,
                 help='Enable the get_all neutron optimization'),
     cfg.BoolOpt("port_subnet_optimization",
                 default=False,
-                help="Retrieve subnets with ports instead of after the fact")
+                help="Retrieve subnets with ports instead of after the fact"),
+    cfg.ListOpt('cacheable_networks',
+                default=['00000000-0000-0000-0000-000000000000',
+                         '11111111-1111-1111-1111-111111111111'],
+                help='List of networks to cache'),
+    cfg.StrOpt('quantum_default_tenant_id',
+               default="default",
+               help=('Default tenant id when creating quantum '
+               'networks')),
     ]
 
 CONF = cfg.CONF
@@ -92,7 +100,7 @@ class Cacher(object):
     def __init__(self):
         self._cache = memcache.get_client()
 
-    def set(self, name, value, ttl):
+    def set(self, name, value, ttl=0):
         return self._cache.set(name, value, ttl)
 
     def get(self, name):
@@ -111,46 +119,64 @@ class API(api.API):
         The list contains networks owned by the tenant and public networks.
         If net_ids specified, it searches networks with requested IDs only.
         """
-        if CONF.enable_memorycache:
-
-            pub = '00000000-0000-0000-0000-000000000000'
-            public_nets_cache = _cacher.get('public_nets')
-
-            if net_ids == [pub] and public_nets_cache:
-                return public_nets_cache
-
         if not neutron:
             neutron = neutronv2.get_client(context)
 
         search_opts = {}
 
-        if net_ids is None:
-            # NOTE(tr3buchet): no netids passed in, search shared networks
-            # Retrieve assignable network list.
-            search_opts = {'shared': True}
-        elif len(net_ids) == 0:
-            # NOTE(tr3buchet): empty list of netids passed in,
-            #                  no sense looking up anything, return []
-            return []
-        else:
-            # NOTE(tr3buchet): populated list of netids passed in,
-            #                  search for these ids
-            # If user has specified to attach instance only to specific
-            # networks then only add these to **search_opts. This search will
-            # also include 'shared' networks.
-            search_opts = {'id': net_ids}
-        nets = neutron.list_networks(**search_opts).get('networks', [])
-
-        api._ensure_requested_network_ordering(
-            lambda x: x['id'],
-            nets,
-            net_ids)
-
         if CONF.enable_memorycache:
-            if net_ids == [pub]:
-                _cacher.set('public_nets', nets, CONF.public_network_cache_ttl)
+            res = []
+            if net_ids is None:
+                search_opts = {'shared': True}
+            elif len(net_ids) == 0:
+                return []
+            else:
+                for net_id in net_ids:
+                    cached = _cacher.get(net_id)
+                    if cached is not None:
+                        res.append(cached)
+                for r in res:
+                    if r['id'] in net_ids:
+                        net_ids.remove(r['id'])
+                if len(net_ids) == 0:
+                    return res
+                search_opts = {'id': net_ids}
+            nets = neutron.list_networks(**search_opts).get('networks', [])
+            api._ensure_requested_network_ordering(
+                lambda x: x['id'],
+                nets,
+                net_ids)
+            for net in nets:
+                if (net['id'] in CONF.cacheable_networks
+                        and not _cacher.get(net['id'])):
+                    _cacher.set(net['id'], net, CONF.nets_memcache_ttl)
+                res.append(net)
+            return res
+        else:
+            # memorycache is disabled, use the old code
+            if net_ids is None:
+                # NOTE(tr3buchet): no netids passed in, search shared networks
+                # Retrieve assignable network list.
+                search_opts = {'shared': True}
+            elif len(net_ids) == 0:
+                # NOTE(tr3buchet): empty list of netids passed in,
+                #                  no sense looking up anything, return []
+                return []
+            else:
+                # NOTE(tr3buchet): populated list of netids passed in,
+                #                  search for these ids
+                # If user has specified to attach instance only to specific
+                # networks then only add these to **search_opts. This search
+                # will also include 'shared' networks.
+                search_opts = {'id': net_ids}
+            nets = neutron.list_networks(**search_opts).get('networks', [])
 
-        return nets
+            api._ensure_requested_network_ordering(
+                lambda x: x['id'],
+                nets,
+                net_ids)
+
+            return nets
 
     def _build_network_info_model(self, context, instance, networks=None,
                                   port_ids=None, **kwargs):
