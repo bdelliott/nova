@@ -341,7 +341,7 @@ class LibvirtGenericVIFDriver(LibvirtBaseVIFDriver):
         return conf
 
     def get_config(self, instance, vif, image_meta, inst_type):
-        vif_type = vif['type']
+        vif_type = vif['type'] or network_model.VIF_TYPE_OVS
 
         LOG.debug(_('vif_type=%(vif_type)s instance=%(instance)s '
                     'vif=%(vif)s'),
@@ -596,7 +596,7 @@ class LibvirtGenericVIFDriver(LibvirtBaseVIFDriver):
             LOG.exception(_("Failed while plugging vif"), instance=instance)
 
     def plug(self, instance, vif):
-        vif_type = vif['type']
+        vif_type = vif['type'] or network_model.VIF_TYPE_OVS
 
         LOG.debug(_('vif_type=%(vif_type)s instance=%(instance)s '
                     'vif=%(vif)s'),
@@ -778,7 +778,7 @@ class LibvirtGenericVIFDriver(LibvirtBaseVIFDriver):
             LOG.exception(_("Failed while unplugging vif"), instance=instance)
 
     def unplug(self, instance, vif):
-        vif_type = vif['type']
+        vif_type = vif['type'] or network_model.VIF_TYPE_OVS
 
         LOG.debug(_('vif_type=%(vif_type)s instance=%(instance)s '
                     'vif=%(vif)s'),
