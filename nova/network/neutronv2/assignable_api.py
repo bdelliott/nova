@@ -310,7 +310,7 @@ class API(api.API):
                           network_id, instance=instance)
             # NOTE(mriedem): OverQuota in neutron is a 409
             if e.status_code == 409:
-                raise exception.PortLimitExceeded()
+                raise exception.QuotaError("Neutron Error: %s" % e.message)
             raise
 
     def _get_instance_nw_info(self, *args, **kwargs):
