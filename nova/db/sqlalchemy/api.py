@@ -30,7 +30,9 @@ from oslo.config import cfg
 from oslo.db import exception as db_exc
 from oslo.db.sqlalchemy import session as db_session
 from oslo.db.sqlalchemy import utils as sqlalchemyutils
+import osprofiler.sqlalchemy
 import six
+import sqlalchemy
 from sqlalchemy import and_
 from sqlalchemy import Boolean
 from sqlalchemy.exc import NoSuchTableError
@@ -75,6 +77,7 @@ db_opts = [
 CONF = cfg.CONF
 CONF.register_opts(db_opts)
 CONF.import_opt('compute_topic', 'nova.compute.rpcapi')
+CONF.import_group("profiler", "nova.service")
 
 LOG = logging.getLogger(__name__)
 
@@ -89,6 +92,13 @@ def _create_facade_lazily():
         with _LOCK:
             if _ENGINE_FACADE is None:
                 _ENGINE_FACADE = db_session.EngineFacade.from_config(CONF)
+                if CONF.profiler.enabled and CONF.profiler.trace_sqlalchemy:
+                    osprofiler.sqlalchemy.add_tracing(sqlalchemy,
+                            _ENGINE_FACADE.get_engine(use_slave=False),
+                            "db (master)")
+                    osprofiler.sqlalchemy.add_tracing(sqlalchemy,
+                            _ENGINE_FACADE.get_engine(use_slave=True),
+                            "db (slave)")
     return _ENGINE_FACADE
 
 

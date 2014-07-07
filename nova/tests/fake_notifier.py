@@ -34,10 +34,13 @@ FakeMessage = collections.namedtuple('Message',
 
 class FakeNotifier(object):
 
-    def __init__(self, transport, publisher_id, serializer=None):
+    def __init__(self, transport, publisher_id, serializer=None, driver=None,
+                 topic=None, retry=None):
         self.transport = transport
         self.publisher_id = publisher_id
         self._serializer = serializer or messaging.serializer.NoOpSerializer()
+        self._topic = topic
+        self.retry = retry
 
         for priority in ['debug', 'info', 'warn', 'error', 'critical']:
             setattr(self, priority,
@@ -57,6 +60,9 @@ class FakeNotifier(object):
         anyjson.serialize(payload)
         msg = FakeMessage(self.publisher_id, priority, event_type, payload)
         NOTIFICATIONS.append(msg)
+
+    def info(self, ctxt, event_type, payload):
+        self._notify("INFO", ctxt, event_type, payload)
 
 
 def stub_notifier(stubs):

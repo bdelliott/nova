@@ -23,6 +23,8 @@ import sys
 
 from oslo.config import cfg
 from oslo import messaging
+import osprofiler.notifier
+from osprofiler import profiler
 
 from nova import baserpc
 from nova import conductor
@@ -114,9 +116,34 @@ service_opts = [
                help='Maximum time since last check-in for up service'),
     ]
 
+profiler_opts = [
+    cfg.BoolOpt("enabled", default=True,
+                help=_('If False fully disable profiling feature.')),
+    cfg.BoolOpt("trace_sqlalchemy", default=True,
+                help=_("If False doesn't trace SQL requests."))
+]
+
 CONF = cfg.CONF
 CONF.register_opts(service_opts)
+CONF.register_opts(profiler_opts, group="profiler")
 CONF.import_opt('host', 'nova.netconf')
+
+
+def setup_profiler(binary, host):
+    if CONF.profiler.enabled:
+        _notifier = osprofiler.notifier.create(
+            "Messaging", messaging, context.get_admin_context().to_dict(),
+            rpc.TRANSPORT, "nova", binary, host)
+        osprofiler.notifier.set(_notifier)
+        LOG.warning(_("OSProfiler is enabled.\nIt means that person who knows "
+                      "any of hmac_keys that are specified in "
+                      "/etc/nova/api-paste.ini can trace his requests. \n"
+                      "In real life only operator can read this file so there "
+                      "is no security issue. Note that even if person can "
+                      "trigger profiler, only admin user can retrieve trace "
+                      "information.\n"
+                      "To disable OSprofiler set in nova.conf:\n"
+                      "[profiler]\nenabled=false"))
 
 
 class Service(service.Service):
@@ -145,6 +172,7 @@ class Service(service.Service):
         # of the servicegroup API.
         self.servicegroup_api = servicegroup.API(db_allowed=db_allowed)
         manager_class = importutils.import_class(self.manager_class_name)
+        manager_class = profiler.trace_cls("rpc")(manager_class)
         self.manager = manager_class(host=self.host, *args, **kwargs)
         self.rpcserver = None
         self.report_interval = report_interval
@@ -155,6 +183,7 @@ class Service(service.Service):
         self.backdoor_port = None
         self.conductor_api = conductor.API(use_local=db_allowed)
         self.conductor_api.wait_until_ready(context.get_admin_context())
+        setup_profiler(binary, host)
 
     def start(self):
         verstr = version.version_string_with_package()
@@ -352,6 +381,7 @@ class WSGIService(object):
         # Pull back actual port used
         self.port = self.server.port
         self.backdoor_port = None
+        setup_profiler(name, self.host)
 
     def reset(self):
         """Reset server greenpool size to default.
