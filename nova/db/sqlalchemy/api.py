@@ -95,7 +95,7 @@ api_db_opts = [
                     'is set by the server configuration, '
                     'set this to no value. Example: mysql_sql_mode='),
     cfg.IntOpt('idle_timeout',
-               default=3600,
+               default=60,
                help='Timeout before idle SQL connections are reaped.'),
     cfg.IntOpt('max_pool_size',
                help='Maximum number of SQL connections to keep open in a '
